@@ -186,6 +186,149 @@ INDICATORS: list[dict] = [
     },
 ]
 
+# Further definitions: measured state indicators (DHS, EFInA) and derived indicators
+# computed by `connectly derive`. Definitions only; no values.
+INDICATORS += [
+    {
+        "code": "population.density_per_km2",
+        "name": "Modelled population density",
+        "sector": None,
+        "unit": "people per km²",
+        "higher_is_worse": None,
+        "description": "Modelled population divided by area.",
+        "method": "Derived: population.modelled_total ÷ boundary area (km²).",
+    },
+    {
+        "code": "geo.urban_flag",
+        "name": "Urban classification (GRID3 ward file)",
+        "sector": None,
+        "unit": "flag (1 = urban, 0 = not urban)",
+        "higher_is_worse": None,
+        "description": "Urban flag as published in the GRID3 ward boundaries file.",
+        "method": "As published by GRID3; the classification method is not documented in the file.",
+    },
+    {
+        "code": "health.nearest_facility_km_ward_point",
+        "name": "Distance from ward centre to nearest health facility",
+        "sector": "health",
+        "unit": "km",
+        "higher_is_worse": True,
+        "description": "Straight-line distance from a point inside the ward to the nearest "
+        "health facility (pharmacies excluded).",
+        "method": "Derived: PostGIS nearest-neighbour from the ward's ST_PointOnSurface. "
+        "A coarse proxy: it ignores where people live within the ward.",
+    },
+    {
+        "code": "health.settlements_over_5km_pct",
+        "name": "Settlements more than 5 km from a health facility",
+        "sector": "health",
+        "unit": "% of settlements",
+        "higher_is_worse": True,
+        "description": "Share of the ward's settlements whose nearest health facility is over 5 km away.",
+        "method": "Derived from settlement points and health facility points; unweighted by population.",
+    },
+    {
+        "code": "health.births_in_facility_pct",
+        "name": "Births delivered in a health facility",
+        "sector": "health",
+        "unit": "% of live births",
+        "higher_is_worse": False,
+        "description": "Live births in the reference period delivered in a health facility.",
+        "method": "Measured: DHS survey estimate (state level).",
+    },
+    {
+        "code": "connectivity.sites_per_10k",
+        "name": "Mapped cell sites per 10,000 people",
+        "sector": "connectivity",
+        "unit": "sites per 10,000",
+        "higher_is_worse": False,
+        "description": "Distinct mapped cell sites relative to modelled population.",
+        "method": "Derived: telecom facility count ÷ modelled population × 10,000. Crowdsourced input.",
+    },
+    {
+        "code": "connectivity.nearest_tower_km_ward_point",
+        "name": "Distance from ward centre to nearest mapped cell site",
+        "sector": "connectivity",
+        "unit": "km",
+        "higher_is_worse": True,
+        "description": "Straight-line distance from a point inside the ward to the nearest mapped cell site.",
+        "method": "Derived: PostGIS nearest-neighbour from the ward's ST_PointOnSurface.",
+    },
+    {
+        "code": "connectivity.households_mobile_phone_pct",
+        "name": "Households with a mobile phone",
+        "sector": "connectivity",
+        "unit": "% of households",
+        "higher_is_worse": False,
+        "description": "Households possessing a mobile telephone.",
+        "method": "Measured: DHS survey estimate (state level).",
+    },
+    {
+        "code": "finance.access_points_per_10k",
+        "name": "Mapped financial access points per 10,000 people",
+        "sector": "finance",
+        "unit": "access points per 10,000",
+        "higher_is_worse": False,
+        "description": "Banks, ATMs and other mapped financial service points relative to modelled population.",
+        "method": "Derived: financial facility count ÷ modelled population × 10,000. "
+        "OpenStreetMap coverage is uneven; agents are rarely mapped.",
+    },
+    {
+        "code": "finance.nearest_access_point_km_ward_point",
+        "name": "Distance from ward centre to nearest mapped financial access point",
+        "sector": "finance",
+        "unit": "km",
+        "higher_is_worse": True,
+        "description": "Straight-line distance to the nearest mapped bank, ATM or similar point.",
+        "method": "Derived: PostGIS nearest-neighbour from the ward's ST_PointOnSurface.",
+    },
+    {
+        "code": "finance.financially_excluded_adults_pct",
+        "name": "Adults financially excluded",
+        "sector": "finance",
+        "unit": "% of adults",
+        "higher_is_worse": True,
+        "description": "Share of adults using no formal or informal financial services.",
+        "method": "Measured: EFInA Access to Financial Services in Nigeria survey, state estimate.",
+    },
+    {
+        "code": "education.schools_per_10k",
+        "name": "Schools per 10,000 people",
+        "sector": "education",
+        "unit": "schools per 10,000",
+        "higher_is_worse": False,
+        "description": "Mapped schools relative to modelled population (all ages).",
+        "method": "Derived: education facility count ÷ modelled population × 10,000.",
+    },
+    {
+        "code": "education.women_literate_pct",
+        "name": "Women who are literate",
+        "sector": "education",
+        "unit": "% of women 15-49",
+        "higher_is_worse": False,
+        "description": "Women age 15-49 who are literate.",
+        "method": "Measured: DHS survey estimate (state level).",
+    },
+    {
+        "code": "energy.households_electricity_pct",
+        "name": "Households with electricity",
+        "sector": "energy",
+        "unit": "% of households",
+        "higher_is_worse": False,
+        "description": "Households with access to electricity.",
+        "method": "Measured: DHS survey estimate (state level).",
+    },
+    {
+        "code": "commerce.markets_per_10k",
+        "name": "Mapped marketplaces per 10,000 people",
+        "sector": "commerce",
+        "unit": "markets per 10,000",
+        "higher_is_worse": False,
+        "description": "Mapped marketplaces relative to modelled population.",
+        "method": "Derived: market facility count ÷ modelled population × 10,000.",
+    },
+]
+
 IDENTIFIED = date(2026, 11, 10)
 
 # Gaps found during the Phase 1 data review. Each is shown in the product.
@@ -193,20 +336,33 @@ DATA_GAPS: list[dict] = [
     {
         "code": "geo.wards_not_loaded",
         "sector": None,
-        "title": "Ward boundaries not yet loaded",
-        "description": "Ward boundaries are published by GRID3 (Operational Wards v4.0, "
-        "October 2026) but must be downloaded manually from the GRID3 data hub and loaded "
-        "with `connectly ingest load grid3-nga-wards-v4 --file <path>`.",
-        "scope": "Adamawa State (then all priority states)",
+        "title": "Ward boundaries loaded from GRID3's April 2022 release",
+        "description": "All 9,308 GRID3 wards (April 2022, CC BY 4.0) load automatically. "
+        "GRID3 Operational Wards v4.0 (October 2026) is newer and can replace them after a "
+        "manual download (manifest grid3-nga-wards-v4).",
+        "scope": "Nigeria",
         "candidates": "GRID3 NGA Operational Wards v4.0",
+        "field": False,
+        "status": "partially_addressed",
+    },
+    {
+        "code": "population.source_attribution_unconfirmed",
+        "sector": None,
+        "title": "Ward population source attribution not confirmed",
+        "description": "Ward population values come from columns of the GRID3 ward file that "
+        "match WorldPop/NPC bottom-up population v2.0 (about 2019). The publisher's page could "
+        "not be checked; values are labelled modelled and unverified.",
+        "scope": "Nigeria",
+        "candidates": "WorldPop NGA population v2.0 ward summaries (to cross-check)",
         "field": False,
     },
     {
         "code": "geo.settlements_not_loaded",
         "sector": None,
         "title": "Settlements not yet loaded",
-        "description": "Communities (settlements) are planned for Milestone 2 from GRID3 "
-        "Settlement Extents v4.1 and Settlement Names. Until then the explorer stops at LGA.",
+        "description": "Settlement points and extents come from GRID3 (Settlement Names, "
+        "Settlement Extents v4.1), which must be downloaded by hand. Until they are loaded, "
+        "the ward is the smallest community unit.",
         "scope": "Adamawa State",
         "candidates": "GRID3 NGA Settlement Extents v4.1; GRID3 NGA Settlement Names",
         "field": False,

@@ -1,0 +1,33 @@
+# GRID3 NGA Settlement Names: named settlement points, the community layer.
+key: grid3-nga-settlement-names
+kind: settlements
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+title: GRID3 NGA - Settlement Names
+version: "Record the version shown on the dataset page"
+geographic_coverage: Nigeria
+method_summary: Named settlement locations compiled by GRID3 from field data collection.
+limitations: >-
+  Names and locations as published (GRID3 lists the update as September 2020). Not every
+  built-up area is named. Confirm column names against the downloaded file.
+licence: "GRID3 open data licence — confirm on the dataset page"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Settlement names © GRID3."
+landing_url: https://data.grid3.org/search?q=Nigeria%20settlement%20names
+download:
+  mode: manual
+  instructions: >-
+    On data.grid3.org open "GRID3 NGA - Settlement Names", download GeoJSON, CSV or
+    GeoPackage, save under data/manual/, then run:
+    connectly ingest load grid3-nga-settlement-names --file data/manual/<file> --within-state Adamawa
+points:
+  target: settlement
+  lon: [longitude, Longitude, x, X, lon]
+  lat: [latitude, Latitude, y, Y, lat]
+fields:
+  name: [set_name, settlement_name, name, Name, set_nam]
+  code: [globalid, GlobalID, set_id, settlement_id, OBJECTID, objectid, FID]
+  settlement_type: [set_type, settlement_type, type, category]

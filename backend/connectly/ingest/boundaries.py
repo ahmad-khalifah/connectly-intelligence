@@ -10,125 +10,40 @@ Every run is recorded in `ingest_run`, including rejected rows and warnings.
 from __future__ import annotations
 
 import json
-import math
-import re
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from pathlib import Path
 
-import geopandas as gpd
-import pandas as pd
 import shapely
-from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.prepared import prep
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from connectly.ingest.fetch import RetrievedFile, default_file_for, describe_local_file
+from connectly.ingest import observations as obs
+from connectly.ingest.checks import run_checks
+from connectly.ingest.common import (  # noqa: F401 - re-exported for callers
+    FileNotProvidedError,
+    LoadError,
+    LoadReport,
+    clean_code,
+    clean_name,
+    finish_run,
+    json_safe,
+    manifest_fingerprint,
+    pick_column,
+    read_vector,
+    record_failure,
+    repair_polygonal,
+    resolve_file,
+    skip_if_loaded,
+    start_run,
+    upsert_dataset,
+)
+from connectly.ingest.fetch import describe_local_file
 from connectly.ingest.manifest import Manifest
-from connectly.models import PARENT_LEVEL, AdminArea, Dataset, IngestRun, PlaceAlias, Source
+from connectly.models import PARENT_LEVEL, AdminArea, PlaceAlias
 
-# Generous bounding box around Nigeria (lon/lat). Data outside it almost always means a
-# wrong or missing coordinate reference system.
-NIGERIA_BBOX = (2.0, 3.5, 15.5, 14.5)
 CHILD_LEVEL = {parent: child for child, parent in PARENT_LEVEL.items()}
 LOW_OVERLAP = 0.95
-
-
-class LoadError(RuntimeError):
-    pass
-
-
-class FileNotProvidedError(LoadError):
-    """The dataset has not been downloaded yet. Nothing was attempted, so not a failure."""
-
-
-@dataclass
-class LoadReport:
-    dataset_key: str
-    status: str
-    run_id: int | None = None
-    rows_read: int = 0
-    rows_loaded: int = 0
-    rows_rejected: int = 0
-    rows_out_of_scope: int = 0
-    active: bool = False
-    warnings: list[str] = field(default_factory=list)
-
-
-# --------------------------------------------------------------------------- reading
-
-
-def _pick_column(columns: list[str], candidates: list[str], what: str) -> str:
-    for c in candidates:
-        if c in columns:
-            return c
-    lower = {c.lower(): c for c in columns}
-    for c in candidates:
-        if c.lower() in lower:
-            return lower[c.lower()]
-    raise LoadError(
-        f"none of the expected {what} columns {candidates} exist in the file. "
-        f"Columns found: {columns}. Update `fields.{what}` in the manifest."
-    )
-
-
-def clean_name(value: object) -> str | None:
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return None
-    s = re.sub(r"\s+", " ", str(value)).strip()
-    return s or None
-
-
-def _clean_code(value: object) -> str | None:
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return None
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    s = str(value).strip()
-    return s or None
-
-
-def repair_polygonal(geom: BaseGeometry | None) -> tuple[MultiPolygon | None, bool]:
-    """Return (MultiPolygon or None, was_repaired)."""
-    # GeoPandas returns a NaN float, not None, for features with a null geometry.
-    if not isinstance(geom, BaseGeometry) or geom.is_empty:
-        return None, False
-    repaired = False
-    if not geom.is_valid:
-        geom = shapely.make_valid(geom)
-        repaired = True
-    polys: list[Polygon] = []
-    if isinstance(geom, Polygon):
-        polys = [geom]
-    elif isinstance(geom, MultiPolygon):
-        polys = list(geom.geoms)
-    elif hasattr(geom, "geoms"):
-        for part in geom.geoms:
-            if isinstance(part, Polygon):
-                polys.append(part)
-            elif isinstance(part, MultiPolygon):
-                polys.extend(part.geoms)
-        repaired = True
-    polys = [p for p in polys if not p.is_empty and p.area > 0]
-    if not polys:
-        return None, repaired
-    # Drop any Z coordinate; the database stores 2D geometry.
-    mp = shapely.force_2d(MultiPolygon(polys))
-    return mp, repaired
-
-
-def _json_safe(v: object) -> object:
-    if v is None:
-        return None
-    if isinstance(v, float) and math.isnan(v):
-        return None
-    if isinstance(v, (str, int, float, bool)):
-        return v
-    if isinstance(v, (pd.Timestamp, datetime)):
-        return v.isoformat()
-    return str(v)
 
 
 def prepare_features(
@@ -137,33 +52,11 @@ def prepare_features(
     within: BaseGeometry | None = None,
 ) -> tuple[list[dict], LoadReport]:
     report = LoadReport(dataset_key=manifest.key, status="running")
-    try:
-        gdf = gpd.read_file(path)
-    except Exception as e:  # noqa: BLE001 - surface any reader error clearly
-        raise LoadError(f"could not read {path}: {e}") from e
-    report.rows_read = len(gdf)
-    if gdf.empty:
-        raise LoadError(f"{path} contains no features")
-
-    if gdf.crs is None:
-        raise LoadError(
-            f"{path} has no coordinate reference system. Re-export it with one (EPSG:4326)."
-        )
-    if gdf.crs.to_epsg() != 4326:
-        report.warnings.append(f"reprojected from {gdf.crs.to_string()} to EPSG:4326")
-        gdf = gdf.to_crs(4326)
-
-    minx, miny, maxx, maxy = gdf.total_bounds
-    bx0, by0, bx1, by1 = NIGERIA_BBOX
-    if minx < bx0 or miny < by0 or maxx > bx1 or maxy > by1:
-        raise LoadError(
-            f"extent ({minx:.3f}, {miny:.3f}, {maxx:.3f}, {maxy:.3f}) falls outside Nigeria. "
-            "The coordinate reference system or axis order is probably wrong."
-        )
+    gdf = read_vector(path, manifest, report)
 
     columns = [c for c in gdf.columns if c != gdf.geometry.name]
-    name_col = _pick_column(columns, manifest.field_candidates("name"), "name")
-    code_col = _pick_column(columns, manifest.field_candidates("code"), "code")
+    name_col = pick_column(columns, manifest.field_candidates("name"), "name")
+    code_col = pick_column(columns, manifest.field_candidates("code"), "code")
     alias_cols = [c for c in manifest.field_candidates("alias_codes") if c in columns]
 
     within_prepared = prep(within) if within is not None else None
@@ -172,7 +65,7 @@ def prepare_features(
     repaired_count = 0
     for idx, rec in gdf.iterrows():
         name = clean_name(rec[name_col])
-        code = _clean_code(rec[code_col])
+        code = clean_code(rec[code_col])
         if not name or not code:
             rejected.append(f"row {idx}: missing name or code")
             continue
@@ -186,7 +79,7 @@ def prepare_features(
         ):
             report.rows_out_of_scope += 1
             continue
-        attrs = {c: _json_safe(rec[c]) for c in columns}
+        attrs = {c: json_safe(rec[c]) for c in columns}
         aliases = [str(rec[c]).strip() for c in alias_cols if clean_name(rec[c])]
         aliases += (manifest.name_aliases or {}).get(name, [])
         if manifest.rename and name in manifest.rename:
@@ -213,65 +106,6 @@ def prepare_features(
         report.warnings.append(f"rejected {len(rejected)} rows: " + "; ".join(rejected[:10]))
     report.rows_rejected = len(rejected)
     return rows, report
-
-
-# --------------------------------------------------------------------------- registry
-
-
-def upsert_source(session: Session, manifest: Manifest) -> Source:
-    src = session.scalar(select(Source).where(Source.key == manifest.source.key))
-    if src is None:
-        src = Source(key=manifest.source.key)
-        session.add(src)
-    src.name = manifest.source.name
-    src.url = manifest.source.url
-    session.flush()
-    return src
-
-
-def upsert_dataset(
-    session: Session, manifest: Manifest, retrieved: RetrievedFile | None
-) -> Dataset:
-    src = upsert_source(session, manifest)
-    ds = session.scalar(select(Dataset).where(Dataset.key == manifest.key))
-    if ds is None:
-        ds = Dataset(key=manifest.key, source_id=src.id, status="registered")
-        session.add(ds)
-    ds.source_id = src.id
-    for attr in (
-        "distributor",
-        "title",
-        "version",
-        "publication_date",
-        "source_update_text",
-        "geographic_coverage",
-        "method_summary",
-        "limitations",
-        "licence",
-        "licence_url",
-        "licence_verified",
-        "commercial_use_allowed",
-        "landing_url",
-    ):
-        setattr(ds, attr, getattr(manifest, attr))
-    ds.download_url = manifest.download.url
-    ds.extra = {
-        # Keep state written by earlier loads (e.g. last_parameters for the skip check).
-        **(ds.extra or {}),
-        "kind": manifest.kind,
-        "level": manifest.level,
-        "licence_evidence": manifest.licence_evidence,
-        "attribution": manifest.attribution,
-        "manifest": manifest.path.name if manifest.path else None,
-    }
-    if retrieved is not None:
-        ds.file_name = retrieved.path.name
-        ds.file_bytes = retrieved.bytes
-        ds.retrieved_at = retrieved.retrieved_at
-        if retrieved.url:
-            ds.download_url = retrieved.url
-    session.flush()
-    return ds
 
 
 # --------------------------------------------------------------------------- hierarchy
@@ -438,23 +272,6 @@ UPSERT_SQL = text(
 )
 
 
-def resolve_file(manifest: Manifest, file: Path | None, raw_dir: Path | None) -> Path:
-    if file is not None:
-        return file
-    found = default_file_for(manifest, raw_dir)
-    if found is None:
-        if manifest.download.mode == "http":
-            raise FileNotProvidedError(
-                f"no local copy of {manifest.key}; run `connectly ingest fetch "
-                f"{manifest.key}` first or pass --file"
-            )
-        raise FileNotProvidedError(
-            f"{manifest.key} must be downloaded by hand and passed with --file.\n"
-            f"{manifest.download.instructions or ''}\nPage: {manifest.landing_url}"
-        )
-    return found
-
-
 def load_boundaries(
     session: Session,
     manifest: Manifest,
@@ -466,58 +283,46 @@ def load_boundaries(
 ) -> LoadReport:
     if activate not in ("auto", "yes", "no"):
         raise ValueError("activate must be 'auto', 'yes' or 'no'")
+    level = manifest.level
     path = resolve_file(manifest, file, raw_dir)
     retrieved = describe_local_file(path, url=manifest.download.url)
-    params = {"file": path.name, "within_state": within_state, "activate": activate}
+    params = {
+        "file": path.name,
+        "within_state": within_state,
+        "activate": activate,
+        "manifest": manifest_fingerprint(manifest),
+    }
 
     ds = upsert_dataset(session, manifest, retrieved)
-    already_loaded = (
-        ds.status in ("loaded", "superseded")
-        and ds.file_sha256 == retrieved.sha256
-        and (ds.extra or {}).get("last_parameters") == params
-    )
-    if already_loaded and not force:
-        run = IngestRun(
-            dataset_id=ds.id,
-            status="skipped",
-            finished_at=datetime.now(tz=UTC),
-            parameters=params,
-            warnings=["identical file and parameters already loaded; use --force to reload"],
-        )
-        session.add(run)
-        session.flush()
+    skipped = skip_if_loaded(session, ds, retrieved.sha256, params, force)
+    if skipped:
         return LoadReport(
             dataset_key=manifest.key,
             status="skipped",
-            run_id=run.id,
-            warnings=run.warnings,
-            active=_is_active(session, ds.id, manifest.level),
+            run_id=skipped.id,
+            warnings=skipped.warnings,
+            active=_is_active(session, ds.id, level),
         )
-
-    run = IngestRun(dataset_id=ds.id, status="running", parameters=params)
-    session.add(run)
-    session.flush()
+    run = start_run(session, ds, params)
 
     within_geom = None
     if within_state:
         state = find_active_area(session, "state", within_state)
         within_geom = area_shape(session, state.id)
-        params["within_state_id"] = state.id
 
     rows, report = prepare_features(path, manifest, within=within_geom)
-    report.run_id = run.id
     if not rows:
         raise LoadError(
             f"no usable features after filtering (read {report.rows_read}, "
             f"rejected {report.rows_rejected}, outside scope {report.rows_out_of_scope})"
         )
 
-    loaded_ids: list[int] = []
+    code_to_id: dict[str, int] = {}
     for r in rows:
         new_id = session.execute(
             UPSERT_SQL,
             {
-                "level": manifest.level,
+                "level": level,
                 "name": r["name"],
                 "source_name": r["source_name"],
                 "source_code": r["source_code"],
@@ -526,7 +331,7 @@ def load_boundaries(
                 "attributes": json.dumps(r["attributes"]),
             },
         ).scalar_one()
-        loaded_ids.append(new_id)
+        code_to_id[r["source_code"]] = new_id
         for alias in r["aliases"]:
             exists = session.scalar(
                 select(PlaceAlias.id).where(
@@ -535,6 +340,7 @@ def load_boundaries(
             )
             if not exists:
                 session.add(PlaceAlias(admin_area_id=new_id, alias=alias, source=manifest.key))
+    session.flush()
 
     if within_state is None:
         # A full load replaces the dataset: remove areas no longer in the file.
@@ -543,7 +349,7 @@ def load_boundaries(
                 "DELETE FROM admin_area WHERE dataset_id = :ds AND level = :level "
                 "AND NOT (id = ANY(:ids))"
             ),
-            {"ds": ds.id, "level": manifest.level, "ids": loaded_ids},
+            {"ds": ds.id, "level": level, "ids": list(code_to_id.values())},
         ).rowcount
         if removed:
             report.warnings.append(f"removed {removed} areas no longer present in the file")
@@ -555,7 +361,6 @@ def load_boundaries(
         {"ds": ds.id},
     )
 
-    level = manifest.level
     others_active = session.scalar(
         text(
             "SELECT count(*) FROM admin_area WHERE level = :level AND active AND dataset_id <> :ds"
@@ -572,11 +377,17 @@ def load_boundaries(
         if child:
             assign_parents(session, child)
         report.warnings.extend(hierarchy_warnings(session, level))
+        report.warnings.extend(run_checks(session, manifest, ds.id))
     else:
         report.warnings.append(
             f"loaded but NOT active: another dataset is active for level {level!r}. "
             f"Re-run with --activate yes to switch."
         )
+
+    if manifest.observations:
+        attrs_by_id = {code_to_id[r["source_code"]]: r["attributes"] for r in rows}
+        stored = obs.store_attribute_observations(session, manifest, ds, level, attrs_by_id)
+        report.warnings.extend(stored.warnings)
 
     total = session.scalar(
         text("SELECT count(*) FROM admin_area WHERE dataset_id = :ds"), {"ds": ds.id}
@@ -584,27 +395,10 @@ def load_boundaries(
     if manifest.expected_count and within_state is None and total != manifest.expected_count:
         report.warnings.append(f"expected {manifest.expected_count} areas, found {total}")
 
-    ds.status = "loaded" if should_activate or ds.status != "superseded" else ds.status
-    ds.file_sha256 = retrieved.sha256
-    ds.record_count = total
-    # Stored for the "already loaded" check; derived ids are left out so runs compare equal.
-    ds.extra = {
-        **(ds.extra or {}),
-        "last_parameters": {k: params[k] for k in ("file", "within_state", "activate")},
-    }
-
-    run.status = "succeeded"
-    run.finished_at = datetime.now(tz=UTC)
-    run.rows_read = report.rows_read
-    run.rows_loaded = len(rows)
-    run.rows_rejected = report.rows_rejected
-    run.warnings = report.warnings
-    run.parameters = params
-    session.flush()
-
-    report.status = "succeeded"
     report.rows_loaded = len(rows)
     report.active = should_activate
+    status = "loaded" if should_activate or ds.status != "superseded" else ds.status
+    finish_run(session, run, ds, report, retrieved.sha256, params, total, status=status)
     return report
 
 
@@ -618,20 +412,3 @@ def _is_active(session: Session, dataset_id: int, level: str) -> bool:
             {"ds": dataset_id, "level": level},
         )
     )
-
-
-def record_failure(session: Session, manifest: Manifest, error: str, params: dict) -> int:
-    """Record a failed run in its own transaction, after the load was rolled back."""
-    ds = upsert_dataset(session, manifest, None)
-    if ds.status == "registered":
-        ds.status = "failed"
-    run = IngestRun(
-        dataset_id=ds.id,
-        status="failed",
-        finished_at=datetime.now(tz=UTC),
-        error=error[:4000],
-        parameters=params,
-    )
-    session.add(run)
-    session.flush()
-    return run.id

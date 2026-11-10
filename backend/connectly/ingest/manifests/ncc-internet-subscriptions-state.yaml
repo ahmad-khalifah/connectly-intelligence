@@ -1,0 +1,26 @@
+key: ncc-internet-subscriptions-state
+kind: indicator_table
+source:
+  key: ncc
+  name: Nigerian Communications Commission (NCC)
+  url: https://ncc.gov.ng
+title: NCC active internet subscriptions by state (transcribed)
+version: "Record the reporting month"
+geographic_coverage: Nigeria, 36 states and the FCT
+method_summary: Active internet subscriptions by state as published in NCC industry statistics.
+limitations: Subscriptions, not people; one person can hold several. State-level only.
+licence: "NCC publication terms — confirm before redistribution"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Source: Nigerian Communications Commission industry statistics."
+landing_url: https://ncc.gov.ng/statistics-reports/industry-overview
+download:
+  mode: manual
+  instructions: >-
+    Copy templates/state_indicator_template.csv to data/manual/ncc-internet-subscriptions-state.csv,
+    fill one row per state from the NCC publication (period = reporting month, e.g. 2026-09),
+    then run: connectly ingest load ncc-internet-subscriptions-state --file <that file>
+table:
+  geo_level: state
+  value_type: measured
+  allowed_indicators: [connectivity.internet_subscriptions]

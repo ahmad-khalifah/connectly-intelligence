@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import inspect, select, text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
 
 from connectly.api import schemas
@@ -132,14 +132,18 @@ def stats(session: Session = Depends(get_session)):
             text("SELECT level, count(*) FROM admin_area WHERE active GROUP BY level")
         ).all()
     )
-    has_settlements = inspect(session.get_bind()).has_table("settlement")
-    settlements = (
-        session.scalar(text("SELECT count(*) FROM settlement")) if has_settlements else None
-    )
     one = lambda sql: session.scalar(text(sql))  # noqa: E731
     return schemas.Stats(
         areas_by_level=by_level,
-        settlements=settlements,
+        settlements=one("SELECT count(*) FROM settlement"),
+        settlements_verified=one(
+            "SELECT count(*) FROM settlement "
+            "WHERE verification_status IN ('source_verified', 'field_verified')"
+        ),
+        facilities_by_kind=dict(
+            session.execute(text("SELECT kind, count(*) FROM facility GROUP BY kind")).all()
+        ),
+        claims=one("SELECT count(*) FROM claim WHERE is_active"),
         datasets_loaded=one("SELECT count(*) FROM dataset WHERE status = 'loaded'"),
         datasets_registered=one("SELECT count(*) FROM dataset"),
         sectors=one("SELECT count(*) FROM sector"),

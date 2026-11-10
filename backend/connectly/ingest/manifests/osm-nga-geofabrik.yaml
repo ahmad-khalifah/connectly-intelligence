@@ -1,0 +1,49 @@
+key: osm-nga-geofabrik
+kind: osm_facilities
+source:
+  key: openstreetmap
+  name: OpenStreetMap contributors
+  url: https://www.openstreetmap.org
+distributor: Geofabrik GmbH (daily extract)
+title: OpenStreetMap Nigeria extract (Geofabrik)
+version: "nigeria-latest.osm.pbf — record the extract date"
+geographic_coverage: Nigeria
+method_summary: >-
+  Features tagged as banks, ATMs, bureaux de change, money transfer points, marketplaces,
+  schools, hospitals, clinics, pharmacies, telecom masts and power facilities, mapped to
+  facility kinds by the rules below.
+limitations: >-
+  Volunteer-mapped: completeness varies strongly by place. Missing features are not
+  evidence of absence. Mobile money agents are rarely mapped.
+licence: ODbL 1.0
+licence_url: https://opendatacommons.org/licenses/odbl/1-0/
+licence_verified: true
+licence_evidence: >-
+  openstreetmap.org/copyright states OpenStreetMap data is "licensed under the Open Data
+  Commons Open Database License (ODbL)" and requires credit to OpenStreetMap (checked 10 Nov 2026).
+commercial_use_allowed: true
+attribution: "© OpenStreetMap contributors, ODbL."
+landing_url: https://download.geofabrik.de/africa/nigeria.html
+download:
+  mode: http
+  url: https://download.geofabrik.de/africa/nigeria-latest.osm.pbf
+  file_name: nigeria-latest.osm.pbf
+osm:
+  layers: [points, multipolygons]
+  rules:
+    - {tag: amenity, values: [bank], kind: financial, subtype: bank}
+    - {tag: amenity, values: [atm], kind: financial, subtype: atm}
+    - {tag: amenity, values: [bureau_de_change, money_transfer, payment_centre], kind: financial}
+    - {tag: office, values: [financial, insurance], kind: financial}
+    - {tag: amenity, values: [hospital], kind: health, subtype: hospital}
+    - {tag: amenity, values: [clinic, doctors], kind: health, subtype: clinic}
+    - {tag: healthcare, kind: health}
+    - {tag: amenity, values: [pharmacy], kind: health, subtype: pharmacy}
+    - {tag: amenity, values: [school], kind: education, subtype: school}
+    - {tag: amenity, values: [college, university], kind: education}
+    - {tag: amenity, values: [marketplace], kind: market, subtype: marketplace}
+    - {tag: man_made, values: [mast, tower, communications_tower], also: {"tower:type": [communication]}, kind: telecom}
+    - {tag: telecom, kind: telecom}
+    - {tag: power, values: [plant, generator, substation], kind: energy}
+    - {tag: amenity, values: [bus_station], kind: transport, subtype: bus_station}
+    - {tag: amenity, values: [community_centre], kind: community, subtype: community_centre}

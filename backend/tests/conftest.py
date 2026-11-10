@@ -29,10 +29,8 @@ TEST_DB_URL = os.environ.get(
     "postgresql+psycopg://connectly:connectly@localhost:5432/connectly_test",
 )
 
-TABLES = (
-    "place_alias, observation, admin_area, ingest_run, dataset, source, "
-    "indicator, need_category, data_gap, sector"
-)
+# Tables owned by PostGIS or Alembic are never wiped.
+KEEP_TABLES = ("alembic_version", "spatial_ref_sys")
 
 
 def alembic_config(url: str) -> Config:
@@ -57,7 +55,18 @@ def engine() -> Iterator[Engine]:
 @pytest.fixture
 def session(engine: Engine) -> Iterator[Session]:
     with engine.begin() as conn:
-        conn.execute(text(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE"))
+        tables = (
+            conn.execute(
+                text(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+                    "AND NOT (tablename = ANY(:keep))"
+                ),
+                {"keep": list(KEEP_TABLES)},
+            )
+            .scalars()
+            .all()
+        )
+        conn.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
     s = make_sessionmaker(engine)()
     try:
         yield s
@@ -123,6 +132,7 @@ def make_manifest(tmp_path: Path) -> Callable[..., Manifest]:
             "version": "test",
             "licence": "CC BY 4.0",
             "licence_verified": True,
+            "licence_evidence": "Synthetic test fixture",
             "commercial_use_allowed": True,
             "attribution": "Synthetic test data",
             "download": {"mode": "manual", "instructions": "test"},

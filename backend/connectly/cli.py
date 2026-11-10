@@ -75,14 +75,37 @@ def ingest_list() -> None:
 
 @ingest_app.command("fetch")
 def ingest_fetch(key: str) -> None:
-    """Download a dataset that has an http source."""
+    """Download a dataset that has a direct link, or query its API."""
     try:
         m = get_manifest(key)
-        got = fetch.fetch(m)
+        if m.kind == "dhs_api":
+            from connectly.ingest.tables import fetch_dhs
+
+            got = fetch_dhs(m)
+        else:
+            got = fetch.fetch(m)
     except (ManifestError, fetch.FetchError) as e:
         typer.secho(str(e), fg="red", err=True)
         raise typer.Exit(1) from e
     typer.echo(f"saved {got.path} ({got.bytes:,} bytes, sha256 {got.sha256[:16]}…)")
+
+
+def _load(m, s, file, within_state, activate, force):
+    from connectly.ingest import osm, points, tables
+
+    if m.kind == "admin_boundaries":
+        return boundaries.load_boundaries(
+            s, m, file=file, within_state=within_state, activate=activate, force=force
+        )
+    if m.kind in ("settlements", "facilities"):
+        return points.load_points(s, m, file=file, within_state=within_state, force=force)
+    if m.kind == "osm_facilities":
+        return osm.load_osm(s, m, file=file, within_state=within_state, force=force)
+    if m.kind == "indicator_table":
+        return tables.load_indicator_table(s, m, file=file, force=force)
+    if m.kind == "dhs_api":
+        return tables.load_dhs(s, m, file=file, force=force)
+    raise boundaries.LoadError(f"no loader for kind {m.kind!r}")
 
 
 @ingest_app.command("load")
@@ -90,12 +113,12 @@ def ingest_load(
     key: str,
     file: Path | None = typer.Option(None, help="Local file to load instead of the fetched copy"),
     within_state: str | None = typer.Option(
-        None, help="Keep only areas inside this state (needs states loaded first)"
+        None, help="Keep only records inside this state (needs states loaded first)"
     ),
-    activate: str = typer.Option("auto", help="auto | yes | no"),
+    activate: str = typer.Option("auto", help="Boundaries only: auto | yes | no"),
     force: bool = typer.Option(False, help="Reload even if this exact file was loaded"),
 ) -> None:
-    """Load a boundary dataset into the administrative hierarchy."""
+    """Validate and load any dataset that has a manifest."""
     try:
         m = get_manifest(key)
     except ManifestError as e:
@@ -104,9 +127,7 @@ def ingest_load(
     params = {"file": str(file) if file else None, "within_state": within_state}
     try:
         with session_scope() as s:
-            report = boundaries.load_boundaries(
-                s, m, file=file, within_state=within_state, activate=activate, force=force
-            )
+            report = _load(m, s, file, within_state, activate, force)
     except boundaries.FileNotProvidedError as e:
         # Not a failed load: there is simply no file yet. Leave the dataset status alone.
         typer.secho(str(e), fg="yellow", err=True)
@@ -120,12 +141,28 @@ def ingest_load(
     colour = "green" if report.status == "succeeded" else "yellow"
     typer.secho(
         f"{report.status}: {key} — read {report.rows_read}, loaded {report.rows_loaded}, "
-        f"rejected {report.rows_rejected}, outside scope {report.rows_out_of_scope}, "
-        f"active: {report.active} (run {report.run_id})",
+        f"rejected {report.rows_rejected}, outside scope {report.rows_out_of_scope}"
+        + (f", active: {report.active}" if m.kind == "admin_boundaries" else "")
+        + f" (run {report.run_id})",
         fg=colour,
     )
     for w in report.warnings:
-        typer.secho(f"  warning: {w}", fg="yellow")
+        typer.secho(f"  note: {w}", fg="yellow")
+
+
+@app.command("derive")
+def derive(indicator: str | None = typer.Option(None, help="Only this indicator")) -> None:
+    """Compute derived indicators from loaded facilities, settlements and population."""
+    from connectly.ingest.derive import run_all
+
+    with session_scope() as s:
+        for r in run_all(s, only=indicator):
+            if r.skipped_reason:
+                typer.echo(f"{r.indicator:45} skipped: {r.skipped_reason}")
+            else:
+                typer.echo(
+                    f"{r.indicator:45} " + ", ".join(f"{k} {v}" for k, v in r.stored.items())
+                )
 
 
 @ingest_app.command("runs")
@@ -151,15 +188,46 @@ def ingest_runs(limit: int = 15) -> None:
         )
 
 
+# Datasets that can be downloaded directly and are loaded by `connectly bootstrap`.
+BOOTSTRAP_DATASETS = (
+    "geoboundaries-nga-adm0",
+    "geoboundaries-nga-adm1",
+    "geoboundaries-nga-adm2",
+    "geocontrast-grid3-nga-wards-2022",
+)
+
+
+@app.command("derive-rollups")
+def derive_rollups() -> None:
+    """Sum ward-level modelled population into LGAs and states (derived values)."""
+    from sqlalchemy import select
+
+    from connectly.ingest.observations import aggregate_sum
+    from connectly.models import Dataset
+
+    with session_scope() as s:
+        src = s.scalar(select(Dataset).where(Dataset.key == "geocontrast-grid3-nga-wards-2022"))
+        if src is None or src.status != "loaded":
+            typer.secho("ward dataset not loaded; nothing to roll up", fg="yellow")
+            return
+        for to_level in ("lga", "state"):
+            r = aggregate_sum(s, "population.modelled_total", src, "ward", to_level)
+            typer.echo(f"population.modelled_total ward → {to_level}: {r.stored} values")
+            for w in r.warnings:
+                typer.secho(f"  warning: {w}", fg="yellow")
+
+
 @app.command("bootstrap")
 def bootstrap() -> None:
     """Migrate, seed, then fetch and load the national, state and LGA boundaries."""
     db_upgrade()
     seed()
-    for key in ("geoboundaries-nga-adm0", "geoboundaries-nga-adm1", "geoboundaries-nga-adm2"):
+    for key in BOOTSTRAP_DATASETS:
         if fetch.default_file_for(get_manifest(key)) is None:
             ingest_fetch(key)
         ingest_load(key, file=None, within_state=None, activate="auto", force=False)
+    derive_rollups()
+    derive(indicator=None)
     typer.echo(f"done. Raw files are in {get_settings().raw_dir}")
 
 

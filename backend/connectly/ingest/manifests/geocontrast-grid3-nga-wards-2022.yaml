@@ -1,0 +1,83 @@
+# Nigeria ward boundaries (9,308). Original producer: GRID3. Distributed by geoBoundaries'
+# geoContrast archive, which republishes source boundaries for comparison.
+key: geocontrast-grid3-nga-wards-2022
+kind: admin_boundaries
+level: ward
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+distributor: geoBoundaries geoContrast archive (William & Mary geoLab), GRID3/NGA/ADM3
+title: GRID3 Nigeria Ward Boundaries (April 2022), via geoBoundaries geoContrast
+version: "GRID3 Nigeria Ward Boundaries, source update April 6, 2022"
+publication_date: 2022-04-06
+source_update_text: "April 6, 2022 (sourceDataUpdateDate in the geoContrast metadata)"
+reference_period: "2022"
+geographic_coverage: Nigeria, 9,308 wards in 774 LGAs and 37 states
+method_summary: >-
+  GRID3 ward boundaries, mostly from INEC ward delineations (source column: INEC 9,075;
+  IPD campaign 220; GRID 11; eHealth Africa polio programme 2). geoContrast stores the
+  file as TopoJSON without a declared coordinate system; coordinates are longitude and
+  latitude. Each ward is assigned to the LGA it overlaps most, and its state code
+  (stat_cd) is checked against the state it lies in.
+limitations: >-
+  Operational boundaries for planning, not legal boundaries. Older than GRID3's
+  Operational Wards v4.0 (October 2026), which can replace this file when downloaded
+  (manifest grid3-nga-wards-v4). The file's population columns (mean, q50, q025, q975)
+  are not documented in the geoContrast metadata: their names and structure match the
+  ward summaries of WorldPop and National Population Commission "Bottom-up gridded
+  population estimates for Nigeria, version 2.0" (CC BY 4.0, representative of about
+  2019, published on GRID3 ward boundaries), but that match is inferred, not stated by
+  the publisher. They are stored as modelled and unverified until confirmed.
+licence: CC BY 4.0
+licence_url: https://creativecommons.org/licenses/by/4.0/
+licence_verified: true
+licence_evidence: >-
+  geoContrast metadata file GRID3-NGA-ADM3-metaData.json states boundaryLicense "Creative
+  Commons Attribution 4.0 International (CC BY 4.0)", licenseSource
+  https://data.grid3.org/datasets/GRID3::grid3-nigeria-ward-boundaries/about.
+commercial_use_allowed: true
+attribution: "Ward boundaries © GRID3, CC BY 4.0, via geoBoundaries geoContrast."
+landing_url: https://data.grid3.org/datasets/GRID3::grid3-nigeria-ward-boundaries/about
+download:
+  mode: http
+  url: https://media.githubusercontent.com/media/wmgeolab/geoContrast/main/releaseData/GRID3/NGA/ADM3/GRID3-NGA-ADM3.topojson.zip
+  file_name: GRID3-NGA-ADM3.topojson.zip
+  extract: GRID3-NGA-ADM3.topojson
+  # Git LFS object id recorded in the geoContrast repository (commit 9770afb).
+  sha256: f07bc9d226f961cb10076a8c04051154a96284e9391b9560e0255b30fecf7d8c
+  metadata_url: https://raw.githubusercontent.com/wmgeolab/geoContrast/main/releaseData/GRID3/NGA/ADM3/GRID3-NGA-ADM3-metaData.json
+assume_crs: EPSG:4326
+assume_crs_reason: TopoJSON coordinates are longitude/latitude; the extent check confirms they fall in Nigeria
+fields:
+  name: [wrd_nm_x, ward_name]
+  code: [ward_cd]
+  alias_codes: [globl_d]
+expected_count: 9308
+checks:
+  - type: ancestor_code
+    attribute: stat_cd
+    ancestor_level: state
+    alias_template: "NG-{value}"
+    # GRID3 state codes equal ISO 3166-2:NG codes except these two (checked against
+    # where every ward actually lies: all BR wards are in Borno, all KB wards in Kebbi).
+    code_map: {BR: BO, KB: KE}
+observations:
+  - indicator: population.modelled_total
+    value: mean
+    lower: q025
+    upper: q975
+    interval_note: "95% credible interval (q025–q975) as published in the file"
+    value_type: modelled
+    verification_status: unverified
+    period: "2019"
+    note: >-
+      Modelled estimate, not a count. Source attribution to WorldPop/NPC bottom-up
+      population v2.0 (about 2019) is inferred from matching field names; confirm on the
+      GRID3 dataset page before treating it as verified.
+  - indicator: geo.urban_flag
+    value: urban
+    value_type: estimated
+    verification_status: unverified
+    period: "2022"
+    note: Classification as published in the GRID3 ward file; method not documented there.

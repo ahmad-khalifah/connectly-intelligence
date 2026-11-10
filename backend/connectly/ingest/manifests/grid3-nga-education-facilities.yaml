@@ -1,0 +1,33 @@
+key: grid3-nga-education-facilities
+kind: facilities
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+distributor: Humanitarian Data Exchange (HDX)
+title: GRID3 Nigeria Education Facilities
+version: "Data period December 2020; HDX files updated August 2023"
+reference_period: "2020"
+geographic_coverage: Nigeria
+method_summary: School locations compiled by GRID3.
+limitations: Describes December 2020. Enrolment is not included.
+licence: CC BY (as listed on HDX)
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Education facilities © GRID3, via HDX."
+landing_url: https://data.humdata.org/dataset/nigeria-education-facilities
+download:
+  mode: manual
+  instructions: >-
+    Download the GeoJSON or CSV resource from the HDX page, save under data/manual/, then:
+    connectly ingest load grid3-nga-education-facilities --file data/manual/<file> --within-state Adamawa
+points:
+  target: facility
+  facility_kind: education
+  lon: [longitude, Longitude, x, X, lon]
+  lat: [latitude, Latitude, y, Y, lat]
+fields:
+  name: [name, school_name, facility_name, Name]
+  code: [globalid, GlobalID, unique_id, school_id, OBJECTID, objectid, FID]
+  subtype: [category, type, school_type, education_level, level]
+  ownership: [ownership, management, owner]

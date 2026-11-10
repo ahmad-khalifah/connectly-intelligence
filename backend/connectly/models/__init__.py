@@ -5,6 +5,13 @@ from connectly.models.base import (
     VERIFICATION_STATUSES,
     Base,
 )
+from connectly.models.community import (
+    CLAIM_ATTRIBUTES,
+    FACILITY_KINDS,
+    Claim,
+    Facility,
+    Settlement,
+)
 from connectly.models.evidence import DataGap, Indicator, Observation
 from connectly.models.geography import AdminArea, PlaceAlias
 from connectly.models.provenance import Dataset, IngestRun, Source
@@ -15,7 +22,12 @@ __all__ = [
     "PARENT_LEVEL",
     "VALUE_TYPES",
     "VERIFICATION_STATUSES",
+    "CLAIM_ATTRIBUTES",
+    "FACILITY_KINDS",
     "AdminArea",
+    "Claim",
+    "Facility",
+    "Settlement",
     "Base",
     "DataGap",
     "Dataset",

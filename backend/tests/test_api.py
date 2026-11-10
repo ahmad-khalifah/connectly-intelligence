@@ -21,13 +21,20 @@ def ids(client, **params):
 def test_health(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["migration"] == "0001"
+    from alembic.script import ScriptDirectory
+
+    from tests.conftest import TEST_DB_URL, alembic_config
+
+    assert (
+        body["migration"]
+        == ScriptDirectory.from_config(alembic_config(TEST_DB_URL)).get_current_head()
+    )
 
 
 def test_stats_match_database(client, session):
     s = client.get("/api/v1/stats").json()
     assert s["areas_by_level"] == {"country": 1, "state": 2, "lga": 6, "ward": 0}
-    assert s["settlements"] is None
+    assert s["settlements"] == 0
     assert s["observations"] == 0
     assert s["sectors"] == 8
     assert s["open_data_gaps"] == session.scalar(

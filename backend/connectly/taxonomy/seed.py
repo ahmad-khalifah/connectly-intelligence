@@ -62,7 +62,9 @@ def seed_reference_data(session: Session) -> SeedResult:
         gap.needs_field_verification = spec["field"]
         if gap.identified_on is None:
             gap.identified_on = IDENTIFIED
-        if gap.status is None:
+        if spec.get("status"):
+            gap.status = spec["status"]
+        elif gap.status is None:
             gap.status = "open"
 
     session.flush()

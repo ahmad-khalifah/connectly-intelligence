@@ -1,0 +1,3 @@
+# One row per state and indicator. Every row needs a source_reference (page or table).
+# value_type: measured (default) or estimated. lower/upper: interval bounds if published.
+area,indicator_code,period,value,lower,upper,value_type,source_reference

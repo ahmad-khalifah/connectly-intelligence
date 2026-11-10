@@ -1,0 +1,37 @@
+# Nigeria Demographic and Health Survey 2023-24, state estimates, via the DHS Program API.
+key: dhs-ng-2023-state
+kind: dhs_api
+source:
+  key: dhs-program
+  name: The DHS Program (ICF) with the National Population Commission (NPC)
+  url: https://dhsprogram.com
+title: Nigeria DHS 2023-24 — state indicators (DHS Program API)
+version: "Survey NG2023DHS"
+reference_period: "2023-24"
+geographic_coverage: Nigeria, 36 states and the FCT
+method_summary: >-
+  Nationally representative household survey (fieldwork December 2023 – May 2024),
+  representative at state level. Values and 95% confidence intervals as published by the
+  DHS Program indicator API.
+limitations: >-
+  State-level estimates only: never assigned to LGAs, wards or communities. Each indicator
+  id is checked against its returned label before loading.
+licence: "DHS Program terms of use — confirm before commercial use"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Source: NPC and ICF, Nigeria DHS 2023-24, via the DHS Program API."
+landing_url: https://dhsprogram.com/data/available-datasets.cfm
+download:
+  mode: api
+  instructions: >-
+    connectly ingest fetch dhs-ng-2023-state && connectly ingest load dhs-ng-2023-state
+api:
+  base_url: https://api.dhsprogram.com/rest/dhs/data
+  country: NG
+  survey_id: NG2023DHS
+  breakdown: subnational
+  indicators:
+    - {dhs_id: HC_ELEC_H_ELC, expect_label_contains: electricity, indicator: energy.households_electricity_pct}
+    - {dhs_id: HC_HEFF_H_MPH, expect_label_contains: mobile, indicator: connectivity.households_mobile_phone_pct}
+    - {dhs_id: RH_DELP_C_DHF, expect_label_contains: health facility, indicator: health.births_in_facility_pct}
+    - {dhs_id: ED_LITR_W_LIT, expect_label_contains: literate, indicator: education.women_literate_pct}

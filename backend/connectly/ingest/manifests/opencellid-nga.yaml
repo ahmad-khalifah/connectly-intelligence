@@ -1,0 +1,47 @@
+# OpenCelliD cell records for Nigeria (MCC 621), collapsed to distinct cell sites.
+key: opencellid-nga
+kind: facilities
+source:
+  key: opencellid
+  name: OpenCelliD (Unwired Labs)
+  url: https://opencellid.org
+title: OpenCelliD cell towers, Nigeria (MCC 621)
+version: "Record the download date"
+geographic_coverage: Nigeria
+method_summary: >-
+  Crowdsourced cell observations. Records within ~11 m (4 decimal places) with the same
+  radio technology are collapsed into one site.
+limitations: >-
+  Crowdsourced positions are approximate estimates of cell locations. Absence of a mapped
+  site does not prove absence of coverage, and presence does not prove good service.
+licence: CC BY-SA 4.0
+licence_url: https://creativecommons.org/licenses/by-sa/4.0/
+licence_verified: true
+licence_evidence: >-
+  Wikipedia's OpenCelliD article states the data is licensed under the Creative Commons
+  Attribution-ShareAlike 4.0 International License (checked 10 Nov 2026). Share-alike
+  applies to derived databases.
+commercial_use_allowed: true
+attribution: "Cell data © OpenCelliD contributors, CC BY-SA 4.0."
+landing_url: https://opencellid.org/downloads.php
+download:
+  mode: manual
+  instructions: >-
+    Register free at opencellid.org, copy your access token, then download Nigeria's file:
+    https://opencellid.org/ocid/downloads?token=YOUR_TOKEN&type=mcc&file=621.csv.gz
+    Save it as data/manual/621.csv.gz, then run:
+    connectly ingest load opencellid-nga --file data/manual/621.csv.gz --within-state Adamawa
+points:
+  target: facility
+  facility_kind: telecom
+  lon: [lon]
+  lat: [lat]
+  csv_names: [radio, mcc, net, area, cell, unit, lon, lat, range, samples, changeable, created, updated, averageSignal]
+  filters:
+    - {column: mcc, in: ["621"]}
+  code_compose: [radio, mcc, net, area, cell]
+  dedupe_round: 4
+  dedupe_by: [radio]
+fields:
+  code: [cell]
+  subtype: [radio]

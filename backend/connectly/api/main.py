@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine, text
 
 from connectly import __version__
-from connectly.api.routers import geography, registry
+from connectly.api.routers import community, geography, registry
 from connectly.core.config import get_settings
 from connectly.core.db import get_engine, make_sessionmaker
 
@@ -38,6 +38,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     app.include_router(geography.router)
     app.include_router(registry.router)
+    app.include_router(community.router)
     return app
 
 

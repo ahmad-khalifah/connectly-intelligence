@@ -1,0 +1,31 @@
+# EFInA Access to Financial Services in Nigeria 2023, state results, typed in from the report.
+key: efina-a2f-2023-state
+kind: indicator_table
+source:
+  key: efina
+  name: Enhancing Financial Innovation & Access (EFInA)
+  url: https://efina.org.ng
+title: EFInA A2F 2023 — state financial inclusion (transcribed)
+version: "A2F 2023"
+reference_period: "2023"
+geographic_coverage: Nigeria, 36 states and the FCT
+method_summary: >-
+  Survey of over 20,000 adults, representative at state level. Values are typed in from
+  the published state tables; every row cites its page or table.
+limitations: State-level only. Transcription is checked for range and completeness, not re-computed.
+licence: "EFInA publication terms — confirm before redistribution"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Source: EFInA Access to Financial Services in Nigeria 2023 survey."
+landing_url: https://efina.org.ng/publication/access-to-financial-services-in-nigeria-survey-2023
+download:
+  mode: manual
+  instructions: >-
+    Copy backend/connectly/ingest/templates/state_indicator_template.csv to
+    data/manual/efina-a2f-2023-state.csv, fill one row per state from the report's state
+    tables (with a page/table reference on each row), then run:
+    connectly ingest load efina-a2f-2023-state --file data/manual/efina-a2f-2023-state.csv
+table:
+  geo_level: state
+  value_type: measured
+  allowed_indicators: [finance.formal_inclusion_adults_pct, finance.financially_excluded_adults_pct]

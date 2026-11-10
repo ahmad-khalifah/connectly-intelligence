@@ -1,0 +1,31 @@
+# GRID3 NGA Settlement Extents v4.1 (August 2026): built-up area polygons.
+key: grid3-nga-settlement-extents
+kind: settlements
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+title: GRID3 NGA - Settlement Extents v4.1
+version: "v4.1 (August 2026)"
+geographic_coverage: Nigeria
+method_summary: Settlement extents derived by GRID3 from building footprints.
+limitations: >-
+  Extents are built-up areas, mostly unnamed. Load Settlement Names as the primary
+  community layer; extents add shape and size. Confirm column names against the file.
+licence: "GRID3 open data licence — confirm on the dataset page"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Settlement extents © GRID3."
+landing_url: https://data.grid3.org/search?q=Nigeria%20settlement%20extents
+download:
+  mode: manual
+  instructions: >-
+    On data.grid3.org open "GRID3 NGA - Settlement Extents v4.1", download a GeoPackage or
+    GeoJSON for Adamawa (or national), save under data/manual/, then run:
+    connectly ingest load grid3-nga-settlement-extents --file data/manual/<file> --within-state Adamawa
+points:
+  target: settlement
+fields:
+  name: [set_name, name, Name]
+  code: [globalid, GlobalID, mgrs_code, id, OBJECTID, objectid, FID]
+  settlement_type: [type, set_type, settlement_type, class]

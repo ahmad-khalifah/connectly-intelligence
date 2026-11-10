@@ -108,7 +108,8 @@ def test_all_geometries_valid(dev):
 def test_loaded_boundaries_have_verified_licence_and_checksum(dev):
     rows = q(
         dev,
-        "SELECT key, licence, licence_verified, file_sha256 FROM dataset WHERE status = 'loaded'",
+        "SELECT key, licence, licence_verified, file_sha256 FROM dataset "
+        "WHERE status = 'loaded' AND coalesce(extra->>'kind', '') <> 'derived'",
     ).all()
     assert rows
     for key, licence, verified, sha in rows:

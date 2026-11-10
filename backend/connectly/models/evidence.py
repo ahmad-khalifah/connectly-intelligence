@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -56,6 +57,15 @@ class Observation(TimestampMixin, Base):
     __table_args__ = (
         Index("ix_observation_lookup", "indicator_id", "geo_level", "geo_id", "period"),
         CheckConstraint("value IS NOT NULL OR value_text IS NOT NULL", name="has_value"),
+        # One value per indicator, place, period and source: re-imports update in place.
+        UniqueConstraint(
+            "indicator_id",
+            "geo_level",
+            "geo_id",
+            "period",
+            "dataset_id",
+            name="uq_observation_identity",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -69,12 +79,17 @@ class Observation(TimestampMixin, Base):
     value: Mapped[float | None] = mapped_column(Float)
     value_text: Mapped[str | None] = mapped_column(Text)
     margin_of_error: Mapped[float | None] = mapped_column(Float)
+    # Interval bounds when the source publishes them (e.g. a 95% credible interval).
+    lower_bound: Mapped[float | None] = mapped_column(Float)
+    upper_bound: Mapped[float | None] = mapped_column(Float)
+    interval_note: Mapped[str | None] = mapped_column(String(128))
     value_type: Mapped[str] = mapped_column(
         str_enum(*VALUE_TYPES, name="value_type"), nullable=False
     )
     verification_status: Mapped[str] = mapped_column(
         str_enum(*VERIFICATION_STATUSES, name="verification_status"),
         default="unverified",
+        server_default="unverified",
         nullable=False,
     )
     dataset_id: Mapped[int] = mapped_column(
@@ -82,6 +97,7 @@ class Observation(TimestampMixin, Base):
     )
     # Page, table or row reference inside the source, for traceability.
     source_reference: Mapped[str | None] = mapped_column(String(512))
+    note: Mapped[str | None] = mapped_column(Text)
 
     indicator: Mapped[Indicator] = relationship()
     dataset: Mapped[Dataset] = relationship()

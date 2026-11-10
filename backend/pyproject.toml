@@ -39,7 +39,7 @@ connectly = "connectly.cli:app"
 include = ["connectly*"]
 
 [tool.setuptools.package-data]
-"connectly.ingest" = ["manifests/*.yaml"]
+"connectly.ingest" = ["manifests/*.yaml", "templates/*.csv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -55,6 +55,14 @@ extend-exclude = ["alembic/versions"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Reference text and SQL strings read better unwrapped.
+"connectly/taxonomy/seed_data.py" = ["E501"]
+"connectly/ingest/derive.py" = ["E501"]
+"tests/**" = ["E501", "F811"]
+"connectly/services/**" = ["E501"]
+"connectly/api/routers/**" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["alembic"]

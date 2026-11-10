@@ -111,7 +111,10 @@ class Stats(BaseModel):
     """Counts read directly from the database. Nothing here is estimated."""
 
     areas_by_level: dict[str, int]
-    settlements: int | None  # None: settlements table not yet built
+    settlements: int
+    settlements_verified: int
+    facilities_by_kind: dict[str, int]
+    claims: int
     datasets_loaded: int
     datasets_registered: int
     sectors: int
