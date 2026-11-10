@@ -1,0 +1,25 @@
+# Local PostgreSQL 16 + PostGIS 3.4 for development. Free and runs entirely on your machine.
+#   docker compose up -d       start
+#   docker compose down        stop (data is kept in the named volume)
+#   docker compose down -v     stop and DELETE all local data
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: connectly-db
+    environment:
+      POSTGRES_USER: connectly
+      POSTGRES_PASSWORD: connectly
+      POSTGRES_DB: connectly
+    ports:
+      - "5432:5432"
+    volumes:
+      - connectly-pgdata:/var/lib/postgresql/data
+      - ./docker/initdb/20-test-database.sh:/docker-entrypoint-initdb.d/20-test-database.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connectly -d connectly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  connectly-pgdata:

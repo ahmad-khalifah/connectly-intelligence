@@ -1,0 +1,43 @@
+# GRID3 NGA Operational Wards v4.0 (October 2026). Must be downloaded by hand from the
+# GRID3 data hub, because the hub is not reachable from every environment and its
+# download links are generated on the page.
+key: grid3-nga-wards-v4
+kind: admin_boundaries
+level: ward
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+distributor: GRID3 Data Hub
+title: GRID3 NGA - Operational Wards v4.0
+version: "v4.0"
+# Only the month is published, so no exact date is stored.
+publication_date: null
+source_update_text: "October 2026 (month given on grid3.org/geospatial-data-nigeria)"
+geographic_coverage: Nigeria (check the dataset page for state coverage of v4.0)
+method_summary: Operational ward boundaries produced by GRID3 with state partners.
+limitations: >-
+  Operational boundaries for planning, not legal boundaries. Field names have not yet been
+  checked against the downloaded file; the loader stops and lists the real columns if the
+  expected ones are missing.
+# Not yet confirmed on the GRID3 page. Read the licence on the dataset page, then set
+# licence, licence_verified and commercial_use_allowed before relying on the data.
+licence: "Not yet confirmed - read the GRID3 dataset page"
+licence_url: null
+licence_verified: false
+licence_evidence: null
+commercial_use_allowed: null
+attribution: "Ward boundaries © GRID3."
+landing_url: https://data.grid3.org/datasets/GRID3::grid3-nga-operational-wards-v4-0/about
+download:
+  mode: manual
+  instructions: >-
+    Open the landing_url in a browser, choose Download, and save the GeoJSON, GeoPackage
+    or zipped Shapefile. Then run:
+    connectly ingest load grid3-nga-wards-v4 --file <path> --within-state Adamawa
+  file_name: null
+fields:
+  # Candidate column names, tried in order. Confirm against the real file.
+  name: [wardname, ward_name, WardName, WARDNAME, name]
+  code: [wardcode, ward_code, WardCode, WARDCODE, globalid, GlobalID, OBJECTID]
+expected_count: null

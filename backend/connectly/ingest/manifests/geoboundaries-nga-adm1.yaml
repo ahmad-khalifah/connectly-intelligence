@@ -1,0 +1,43 @@
+# Nigeria state boundaries (36 states + FCT). Original producer: GRID3. Distributed by geoBoundaries.
+key: geoboundaries-nga-adm1
+kind: admin_boundaries
+level: state
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+distributor: geoBoundaries (William & Mary geoLab), gbOpen release
+title: Nigeria state boundaries (GRID3, via geoBoundaries gbOpen NGA ADM1)
+version: "geoBoundaries NGA-ADM1, build Dec 12, 2023"
+publication_date: 2023-12-12
+source_update_text: "Sun Feb 26 12:26:14 2023"
+geographic_coverage: Nigeria, 36 states and the Federal Capital Territory
+method_summary: >-
+  GRID3 Nigeria state boundaries as republished by geoBoundaries. geoBoundaries
+  standardises file format and attributes; boundary lines come from GRID3.
+limitations: >-
+  Operational boundaries for planning and analysis, not legal survey boundaries.
+  Reflects the GRID3 update of February 2023. The FCT is named "Abuja Federal Capital
+  Territory" in the source.
+licence: CC BY 4.0
+licence_url: https://creativecommons.org/licenses/by/4.0/
+licence_verified: true
+licence_evidence: >-
+  geoBoundaries metadata file (geoBoundaries-NGA-ADM1-metaData.json) states boundaryLicense
+  "Creative Commons Attribution 4.0 International (CC BY 4.0)" and boundarySource "GRID3".
+commercial_use_allowed: true
+attribution: "Boundaries © GRID3, CC BY 4.0, via geoBoundaries (www.geoboundaries.org)."
+landing_url: https://www.geoboundaries.org/countryDownloads.html
+download:
+  mode: http
+  url: https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/NGA/ADM1/geoBoundaries-NGA-ADM1.geojson
+  file_name: geoBoundaries-NGA-ADM1.geojson
+  metadata_url: https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/NGA/ADM1/geoBoundaries-NGA-ADM1-metaData.json
+fields:
+  name: [shapeName]
+  code: [shapeID]
+  # Kept as an alias / cross-reference (ISO 3166-2 code, e.g. NG-AD).
+  alias_codes: [shapeISO]
+expected_count: 37
+name_aliases:
+  Abuja Federal Capital Territory: [FCT, Federal Capital Territory, Abuja]

@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-ink: #13201d;
+  --color-muted: #5b6b67;
+  --color-line: #dbe3e0;
+  --color-paper: #f6f8f7;
+  --color-panel: #ffffff;
+  --color-brand: #0e6b5c;
+  --color-brand-soft: #e3f1ee;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #fff4dc;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* MapLibre popups inherit the app type. */
+.maplibregl-popup-content {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
