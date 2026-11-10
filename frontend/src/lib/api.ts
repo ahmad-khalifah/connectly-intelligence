@@ -137,6 +137,22 @@ export interface Stats {
   settlements_verified?: number;
   facilities_by_kind?: Record<string, number>;
   claims?: number;
+  claims_verified?: number;
+  organisations_active?: number;
+  solutions_published?: number;
+  solutions_awaiting_review?: number;
+  reports?: number;
+  observations_by_sector?: Record<string, number>;
+  focus_state?: {
+    id: number;
+    name: string;
+    lgas: number;
+    wards: number;
+    population: number | null;
+    facilities: number;
+    settlements: number;
+    claims: number;
+  } | null;
   datasets_loaded: number;
   datasets_registered: number;
   sectors: number;

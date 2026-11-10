@@ -22,9 +22,12 @@ from connectly.models.directory import (
 from connectly.models.evidence import DataGap, Indicator, Observation
 from connectly.models.geography import AdminArea, PlaceAlias
 from connectly.models.provenance import Dataset, IngestRun, Source
+from connectly.models.reports import REPORT_KINDS, Report
 from connectly.models.sectors import NeedCategory, Sector
 
 __all__ = [
+    "REPORT_KINDS",
+    "Report",
     "Organisation",
     "Solution",
     "SolutionCoverage",

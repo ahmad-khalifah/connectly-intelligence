@@ -27,6 +27,8 @@ dependencies = [
     "pwdlib[argon2]>=0.2",
     "pyjwt>=2.9",
     "email-validator>=2.1",
+    "reportlab>=4.2",
+    "svglib>=1.5",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +45,7 @@ include = ["connectly*"]
 
 [tool.setuptools.package-data]
 "connectly.ingest" = ["manifests/*.yaml", "templates/*.csv"]
+"connectly.reports" = ["assets/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -67,6 +70,7 @@ ignore = ["B008"]
 "connectly/services/**" = ["E501"]
 "connectly/api/routers/**" = ["E501"]
 "connectly/ai/**" = ["E501"]
+"connectly/reports/**" = ["E501"]
 "connectly/services/market_entry.py" = ["E501"]
 
 [tool.ruff.lint.isort]

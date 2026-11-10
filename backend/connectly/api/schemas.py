@@ -121,6 +121,13 @@ class Stats(BaseModel):
     indicators_defined: int
     observations: int
     open_data_gaps: int
+    claims_verified: int = 0
+    organisations_active: int = 0
+    solutions_published: int = 0
+    solutions_awaiting_review: int = 0
+    reports: int = 0
+    observations_by_sector: dict[str, int] = {}
+    focus_state: dict | None = None
     generated_at: datetime
 
 

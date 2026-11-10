@@ -11,7 +11,7 @@ export const NAV = [
   { href: "/matching", label: "Matching" },
   { href: "/market-entry", label: "Market entry" },
   { href: "/directory", label: "Directory" },
-  { href: "/data", label: "Data sources" },
+  { href: "/reports", label: "Reports" },
 ];
 
 export function NavLinks() {

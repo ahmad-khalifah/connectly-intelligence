@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button, Field, FormMessage, inputClass } from "@/components/forms";
 import { AreaPicker } from "@/components/matching/AreaPicker";
+import { SaveReport } from "@/components/reports/SaveReport";
 import { ValueBadges } from "@/components/profile/Values";
 import { Badge, Panel } from "@/components/ui";
 import { ApiError, BRIEF_SECTION, type IntelligenceBrief, ITEM_KIND, sendJson } from "@/lib/api";
@@ -61,7 +62,12 @@ export function Intelligence({
           <Button type="submit" busy={busy}>Build brief</Button>
         </form>
       </Panel>
-      {b && <Brief b={b} />}
+      {b && (
+        <>
+          <SaveReport kind="brief" params={{ area_id: b.area.id, sector: b.sector, question: b.question, summarise: b.narrative.status === "accepted" }} />
+          <Brief b={b} />
+        </>
+      )}
     </div>
   );
 }

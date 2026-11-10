@@ -125,6 +125,39 @@ def list_gaps(
     ]
 
 
+FOCUS_STATE = "Adamawa"
+
+
+def _focus_state(session: Session) -> dict | None:
+    """Counts for the first implementation state, read from the database."""
+    row = (
+        session.execute(
+            text(
+                """
+                SELECT st.id, st.name,
+                  (SELECT count(*) FROM admin_area l WHERE l.parent_id = st.id AND l.active) AS lgas,
+                  (SELECT count(*) FROM admin_area w JOIN admin_area l ON l.id = w.parent_id
+                     WHERE l.parent_id = st.id AND w.active) AS wards,
+                  (SELECT o.value FROM observation o JOIN indicator i ON i.id = o.indicator_id
+                     WHERE i.code = 'population.modelled_total' AND o.geo_level = 'state'
+                       AND o.geo_id = st.id ORDER BY o.period DESC LIMIT 1) AS population,
+                  (SELECT count(*) FROM facility f WHERE f.state_id = st.id) AS facilities,
+                  (SELECT count(*) FROM settlement x WHERE x.state_id = st.id) AS settlements,
+                  (SELECT count(*) FROM claim c WHERE c.is_active AND c.subject_type = 'admin_area'
+                     AND c.subject_id IN (SELECT id FROM admin_area WHERE id = st.id
+                       OR parent_id = st.id OR parent_id IN (SELECT id FROM admin_area
+                       WHERE parent_id = st.id))) AS claims
+                FROM admin_area st WHERE st.level = 'state' AND st.name = :n AND st.active
+                """
+            ),
+            {"n": FOCUS_STATE},
+        )
+        .mappings()
+        .first()
+    )
+    return dict(row) if row else None
+
+
 @router.get("/stats", response_model=schemas.Stats)
 def stats(session: Session = Depends(get_session)):
     by_level = dict.fromkeys(ADMIN_LEVELS, 0) | dict(
@@ -150,5 +183,23 @@ def stats(session: Session = Depends(get_session)):
         indicators_defined=one("SELECT count(*) FROM indicator"),
         observations=one("SELECT count(*) FROM observation"),
         open_data_gaps=one("SELECT count(*) FROM data_gap WHERE status <> 'resolved'"),
+        claims_verified=one(
+            "SELECT count(*) FROM claim WHERE is_active "
+            "AND verification_status IN ('source_verified', 'field_verified')"
+        ),
+        organisations_active=one("SELECT count(*) FROM organisation WHERE status = 'active'"),
+        solutions_published=one("SELECT count(*) FROM solution WHERE status = 'published'"),
+        solutions_awaiting_review=one("SELECT count(*) FROM solution WHERE status = 'submitted'"),
+        reports=one("SELECT count(*) FROM report"),
+        observations_by_sector=dict(
+            session.execute(
+                text(
+                    "SELECT coalesce(s.code, 'general'), count(*) FROM observation o "
+                    "JOIN indicator i ON i.id = o.indicator_id "
+                    "LEFT JOIN sector s ON s.id = i.sector_id GROUP BY 1"
+                )
+            ).all()
+        ),
+        focus_state=_focus_state(session),
         generated_at=datetime.now(tz=UTC),
     )

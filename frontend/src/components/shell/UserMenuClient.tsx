@@ -71,8 +71,14 @@ export function UserMenuClient({
           <Link role="menuitem" href="/account" className={item} onClick={() => setOpen(false)}>
             Account and password
           </Link>
+          <Link role="menuitem" href="/data" className={item} onClick={() => setOpen(false)}>
+            Data sources and licences
+          </Link>
           {isAdmin && (
             <>
+              <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
+                Administration
+              </Link>
               <Link role="menuitem" href="/admin/users" className={item} onClick={() => setOpen(false)}>
                 Users
               </Link>

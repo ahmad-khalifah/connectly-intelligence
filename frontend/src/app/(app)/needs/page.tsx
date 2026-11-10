@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { SectionLoader } from "@/components/brand";
 import { inputClass } from "@/components/forms";
 import { ScoreMap } from "@/components/needs/ScoreMap";
+import { SaveReport } from "@/components/reports/SaveReport";
 import { ValueBadges } from "@/components/profile/Values";
 import { Badge, PageHeader, Panel } from "@/components/ui";
 import { type AreaSummary, CONFIDENCE_TONE, formatNumber, LEVEL_PLURAL, type NeedAssessment, type Sector } from "@/lib/api";
@@ -71,6 +72,8 @@ async function Needs({ searchParams }: { searchParams: PageProps<"/needs">["sear
         </div>
         <button type="submit" className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong">Assess</button>
       </form>
+
+      {scopeId && <SaveReport kind="needs" params={{ sector, level, scope_id: scopeId }} />}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
         <Panel title={`${r.sector_name}: ${LEVEL_PLURAL[level].toLowerCase()} in ${r.scope.name}`}>

@@ -7,6 +7,7 @@ import { Button, CheckboxGroup, Field, FormMessage, FormSection, inputClass, Unk
 import { Badge, Panel } from "@/components/ui";
 import { ApiError, type AreaSummary, formatNumber, ITEM_KIND, type MarketEntryResult, sendJson } from "@/lib/api";
 import type { Solution, Vocabularies } from "@/lib/directory";
+import { SaveReport } from "@/components/reports/SaveReport";
 
 export function MarketEntry({
   vocab,
@@ -41,6 +42,7 @@ export function MarketEntry({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MarketEntryResult | null>(null);
+  const [lastParams, setLastParams] = useState<Record<string, unknown> | null>(null);
   const needs = vocab.sectors.find((s) => s.code === sector)?.needs ?? [];
   const stateOptions = Object.fromEntries(
     [...states].sort((a, b) => a.name.localeCompare(b.name)).map((s) => [String(s.id), s.name]),
@@ -52,8 +54,7 @@ export function MarketEntry({
     setBusy(true);
     setError(null);
     try {
-      setResult(
-        await sendJson<MarketEntryResult>("/api/v1/market-entry", "POST", {
+      const params = {
           sector,
           need: need || null,
           solution_id: solutionId ? Number(solutionId) : null,
@@ -64,8 +65,9 @@ export function MarketEntry({
           price_unit: f.price_unit || null,
           budget_ngn: num(f.budget_ngn),
           state_ids: f.state_ids.map(Number),
-        }),
-      );
+      };
+      setResult(await sendJson<MarketEntryResult>("/api/v1/market-entry", "POST", params));
+      setLastParams(params);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "The analysis failed.");
     } finally {
@@ -133,7 +135,12 @@ export function MarketEntry({
         {error && <FormMessage tone="error">{error}</FormMessage>}
         <Button type="submit" busy={busy}>Analyse</Button>
       </form>
-      {result && <Result r={result} />}
+      {result && (
+        <>
+          {lastParams && <SaveReport kind="market_entry" params={lastParams} />}
+          <Result r={result} />
+        </>
+      )}
     </div>
   );
 }

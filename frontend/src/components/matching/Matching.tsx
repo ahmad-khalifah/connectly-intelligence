@@ -9,6 +9,8 @@ import { Badge, Panel } from "@/components/ui";
 import { ApiError, CONFIDENCE_TONE, type MatchResponse, type MatchResult, sendJson } from "@/lib/api";
 import { AVAILABILITY_LABEL, type Availability, type Vocabularies } from "@/lib/directory";
 
+import { SaveReport } from "@/components/reports/SaveReport";
+
 import { AreaPicker } from "./AreaPicker";
 
 export function Matching({ vocab }: { vocab: Vocabularies }) {
@@ -93,7 +95,15 @@ export function Matching({ vocab }: { vocab: Vocabularies }) {
           <Button type="submit" busy={busy}>Find matching solutions</Button>
         </form>
       </Panel>
-      {result && <Results r={result} vocab={vocab} />}
+      {result && (
+        <>
+          <SaveReport
+            kind="matching"
+            params={{ area_id: result.area.id, sector: result.sector, need: result.need, target_groups: groups, max_price_ngn: maxPrice ? Number(maxPrice) : null }}
+          />
+          <Results r={result} vocab={vocab} />
+        </>
+      )}
     </div>
   );
 }
