@@ -439,3 +439,44 @@ export interface MatchResponse {
   results: MatchResult[];
   excluded: { id: number; name: string; organisation_name: string; reason: string }[];
 }
+
+export interface MarketItem {
+  kind: "fact" | "derived" | "recommendation" | "gap";
+  text: string;
+  evidence: string[];
+}
+
+export interface MarketCandidate {
+  id: number;
+  name: string;
+  state: string | null;
+  level: Level;
+  population: number | null;
+  score: number | null;
+  confidence: number;
+  rank: number;
+  components: Record<"gap" | "fit" | "reach" | "competition", number | null>;
+  gap: { score: number | null; confidence_label: string; rank: number | null; evidence: string[] };
+  fit: MatchCriterion[];
+  need_evidenced: boolean;
+  competitors: { id: number; name: string; organisation: string; availability: string }[];
+}
+
+export interface MarketEntryResult {
+  sector: string;
+  sector_name: string;
+  objective: string;
+  product: { id: number | null; name: string; source: string };
+  needs: { code: string; name: string }[];
+  level: Level;
+  weights: Record<string, number>;
+  candidates: MarketCandidate[];
+  sections: { key: string; title: string; items: MarketItem[] }[];
+}
+
+export const ITEM_KIND: Record<MarketItem["kind"], { label: string; tone: "good" | "gold" | "brand" | "neutral" }> = {
+  fact: { label: "Fact", tone: "good" },
+  derived: { label: "Derived", tone: "gold" },
+  recommendation: { label: "Recommendation", tone: "brand" },
+  gap: { label: "Data gap", tone: "neutral" },
+};

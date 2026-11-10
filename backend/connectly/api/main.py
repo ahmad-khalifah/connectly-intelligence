@@ -13,6 +13,7 @@ from connectly.api.routers import (
     community,
     directory,
     geography,
+    market_entry,
     matching,
     needs,
     registry,
@@ -69,6 +70,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.include_router(community.router, dependencies=signed_in)
     app.include_router(needs.router, dependencies=signed_in)
     app.include_router(matching.router, dependencies=signed_in)
+    app.include_router(market_entry.router, dependencies=signed_in)
     app.include_router(claims.router)
     app.include_router(audit_log.router)
     app.include_router(directory.router)

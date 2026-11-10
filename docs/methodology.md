@@ -97,3 +97,34 @@ as a pass or a fail.
 Every result lists its strengths (criteria scoring 0.8 or more) and the points to check before
 acting (criteria under 0.5, or unknown). Each criterion shows its reason and its evidence.
 Matches are suggestions drawn from directory records, not endorsements.
+
+## Market entry
+
+Code: `backend/connectly/services/market_entry.py`.
+
+**Candidate areas.** The LGAs of the preferred states, or all states when no state is
+chosen. A product's requirements come from a directory record or from the form.
+
+**Opportunity score.** For each candidate, a weighted mean over the parts with data:
+
+| Part | Weight | What it measures |
+| --- | --- | --- |
+| Gap | 40% | The area's needs-assessment score for the sector |
+| Fit | 25% | Local conditions, from the matching criteria: internet and devices, language, distribution, and electricity access against the product's power needs |
+| Reach | 20% | The area's population percentile among the candidates. This is modelled population, not demand. |
+| Competition | 15% | 1 ÷ (1 + the number of published solutions for the same need operating there) |
+
+**An area without evidence of need gets no score.** Ranking by population and conditions
+alone would only rank areas by size, so such areas are listed for reference and not
+recommended.
+
+**Report sections.** The report covers the brief's twelve items, each finding tagged:
+
+- *fact* (from the database, with its source);
+- *derived* (computed from facts);
+- *recommendation* (a stated rule applied to the evidence shown, for example "women's literacy
+  below 50% → use voice and demonstration");
+- *data gap*.
+
+Market demand, customer numbers, partnerships and costs are never estimated: no open data
+supports them. The budget is recorded but not compared with costs.

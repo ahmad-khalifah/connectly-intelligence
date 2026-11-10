@@ -8,6 +8,7 @@ export const NAV = [
   { href: "/explorer", label: "Explorer" },
   { href: "/needs", label: "Needs" },
   { href: "/matching", label: "Matching" },
+  { href: "/market-entry", label: "Market entry" },
   { href: "/directory", label: "Directory" },
   { href: "/data", label: "Data sources" },
 ];

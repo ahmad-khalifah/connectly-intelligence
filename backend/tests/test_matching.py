@@ -52,10 +52,16 @@ def m(engine, session, synthetic_hierarchy):
     org = c.post("/api/v1/organisations", headers=admin, json=ORG).json()
 
     def add(publish=True, **kw):
-        s = c.post(f"/api/v1/organisations/{org['id']}/solutions", headers=admin, json=solution(**kw))
+        s = c.post(
+            f"/api/v1/organisations/{org['id']}/solutions", headers=admin, json=solution(**kw)
+        )
         assert s.status_code == 201, s.text
         if publish:
-            c.post(f"/api/v1/solutions/{s.json()['id']}/status", headers=admin, json={"status": "published"})
+            c.post(
+                f"/api/v1/solutions/{s.json()['id']}/status",
+                headers=admin,
+                json={"status": "published"},
+            )
 
     add(
         name="SMS Clinic",
@@ -98,7 +104,13 @@ def run(m, **body):
 
 
 def test_needs_from_gap_evidence_and_ranking(m):
-    r = run(m, area_id=m["ids"]["West North"], sector="health", target_groups=["patients"], max_price_ngn=3000)
+    r = run(
+        m,
+        area_id=m["ids"]["West North"],
+        sector="health",
+        target_groups=["patients"],
+        max_price_ngn=3000,
+    )
     assert r["needs_basis"] == "gap_evidence"
     assert "health.telemedicine" in {n["code"] for n in r["target_needs"]}
     assert r["gap_evidence"] and "worse than 100%" in r["gap_evidence"][0]
@@ -109,7 +121,10 @@ def test_needs_from_gap_evidence_and_ranking(m):
     sms = {c["key"]: c for c in r["results"][0]["criteria"]}
     assert sms["language"]["score"] == 1.0 and "Hausa" in sms["language"]["reason"]
     assert sms["availability"]["score"] == 1.0
-    assert sms["distribution"]["score"] == 1.0 and "1 health facilities" in sms["distribution"]["reason"]
+    assert (
+        sms["distribution"]["score"] == 1.0
+        and "1 health facilities" in sms["distribution"]["reason"]
+    )
     assert sms["affordability"]["score"] == 1.0
     assert sms["suitability"]["score"] == 1.0
 
@@ -140,7 +155,17 @@ def test_language_unknown_without_area_data(m):
 
 def test_validation(m):
     c, h = m["c"], m["h"]
-    assert c.post("/api/v1/matching", headers=h, json={"area_id": 999999, "sector": "health"}).status_code == 404
-    assert c.post("/api/v1/matching", headers=h, json={"area_id": m["ids"]["West"], "sector": "x"}).status_code == 422
+    assert (
+        c.post(
+            "/api/v1/matching", headers=h, json={"area_id": 999999, "sector": "health"}
+        ).status_code
+        == 404
+    )
+    assert (
+        c.post(
+            "/api/v1/matching", headers=h, json={"area_id": m["ids"]["West"], "sector": "x"}
+        ).status_code
+        == 422
+    )
     bad = {"area_id": m["ids"]["West"], "sector": "health", "target_groups": ["aliens"]}
     assert c.post("/api/v1/matching", headers=h, json=bad).status_code == 422
