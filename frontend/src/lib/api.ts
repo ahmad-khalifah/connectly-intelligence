@@ -346,3 +346,49 @@ export interface AreaProfile {
   sectors: { code: string; name: string; is_priority: boolean }[];
   last_updated: string | null;
 }
+
+export interface NeedComponent {
+  indicator: string;
+  name: string;
+  unit: string | null;
+  higher_is_worse: boolean;
+  weight: number;
+  value: number;
+  percentile: number;
+  scope_median: number;
+  value_type: string;
+  verification_status: string;
+  period: string;
+  dataset: string;
+  statement: string;
+}
+
+export interface NeedResult {
+  id: number;
+  name: string;
+  parent_name: string | null;
+  population: number | null;
+  score: number | null;
+  coverage: number;
+  confidence: number | null;
+  confidence_label: "high" | "medium" | "low" | "insufficient";
+  components: NeedComponent[];
+  missing: { indicator: string; name: string; weight: number; reason: string }[];
+  rank: number | null;
+}
+
+export interface NeedAssessment {
+  sector: string;
+  sector_name: string;
+  level: Level;
+  scope: { id: number; name: string; level: Level };
+  model: { code: string; weight: number; name: string; unit: string | null }[];
+  status: "ok" | "insufficient" | "no_model";
+  message: string | null;
+  indicators: { code: string; name: string; weight: number; areas_with_value: number; used: boolean; reason: string | null }[];
+  areas_in_scope?: number;
+  areas_scored?: number;
+  areas: NeedResult[];
+}
+
+export const CONFIDENCE_TONE = { high: "good", medium: "gold", low: "warn", insufficient: "neutral" } as const;

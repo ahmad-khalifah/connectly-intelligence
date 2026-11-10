@@ -13,6 +13,8 @@ import {
   formatNumber,
   LEVEL_LABEL,
   LEVEL_PLURAL,
+  CONFIDENCE_TONE,
+  type NeedResult,
   type ProfileValue,
 } from "@/lib/api";
 import type { Vocabularies } from "@/lib/directory";
@@ -216,6 +218,12 @@ async function Profile({ params }: { params: PageProps<"/areas/[id]">["params"] 
         </div>
       </section>
 
+      {p.level !== "country" && (
+        <Suspense fallback={<SectionLoader label="Scoring access gaps" />}>
+          <Gaps areaId={p.id} />
+        </Suspense>
+      )}
+
       <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Panel title="Community information">
           <ClaimsPanel
@@ -281,5 +289,52 @@ async function Profile({ params }: { params: PageProps<"/areas/[id]">["params"] 
         Value types: measured (counted or surveyed), modelled (statistical model), derived (computed here from other values), estimate, assumption. Verification: whether a person has checked the value against its source or in the field.
       </p>
     </div>
+  );
+}
+
+interface AreaNeeds {
+  level: string;
+  sectors: {
+    sector: string;
+    sector_name: string;
+    status: string;
+    scope: { id: number; name: string };
+    areas_scored: number;
+    result: NeedResult | null;
+    message: string | null;
+  }[];
+}
+
+async function Gaps({ areaId }: { areaId: number }) {
+  const n = await serverApi<AreaNeeds>(`/api/v1/needs/areas/${areaId}`);
+  return (
+    <Panel title="Technology access gaps" aside={<Link href="/needs/method" className="text-xs text-brand hover:underline">Method</Link>}>
+      <p className="mb-3 text-xs text-muted">Compared with similar areas in the same state (states with all states). 100 = least served.</p>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {n.sectors.map((s) => {
+          const r = s.result;
+          return (
+            <li key={s.sector} className="rounded-md border border-line p-3">
+              <div className="text-xs text-muted">{s.sector_name}</div>
+              {r && r.score !== null ? (
+                <>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-semibold tabular-nums">{Math.round(r.score)}</span>
+                    <span className="text-xs text-muted">rank {r.rank} of {s.areas_scored}</span>
+                  </div>
+                  <Badge tone={CONFIDENCE_TONE[r.confidence_label]}>{r.confidence_label} confidence</Badge>
+                  {r.components[0] && <p className="mt-2 text-xs">{r.components[0].statement}</p>}
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-muted">
+                  {s.status === "no_model" ? "No open indicator for this sector." : "Not enough data loaded to score."}
+                </p>
+              )}
+              <Link href={`/needs?sector=${s.sector}&level=${n.level}&scope=${s.scope.id}`} className="mt-2 inline-block text-xs text-brand hover:underline">Compare</Link>
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }

@@ -204,6 +204,12 @@ def get_children(area_id: int, session: Session = Depends(get_session)):
     return list_areas(level=None, parent_id=area_id, q=None, limit=1000, session=session)
 
 
+DESCENDANTS_SQL = (
+    "WITH RECURSIVE d AS (SELECT id FROM admin_area WHERE id = :within_id "
+    "UNION ALL SELECT c.id FROM admin_area c JOIN d ON c.parent_id = d.id) SELECT id FROM d"
+)
+
+
 def _features(session: Session, where: str, params: dict, tolerance: float) -> list[dict]:
     rows = session.execute(
         text(
@@ -255,17 +261,22 @@ def _attributions(session: Session, where: str, params: dict) -> list[str]:
 def geojson(
     level: Level,
     parent_id: int | None = None,
+    within_id: int | None = Query(None, description="Any ancestor, e.g. a state for its wards"),
     tolerance: float | None = Query(None, ge=0, le=0.1),
     session: Session = Depends(get_session),
 ):
-    """Simplified boundaries for a map layer: all areas of `level`, optionally under one parent."""
+    """Simplified boundaries for a map layer: all areas of `level`, optionally under one parent
+    (`parent_id`) or anywhere inside one larger area (`within_id`)."""
     where = "a.level = :level"
     params: dict = {"level": level}
     if parent_id is not None:
         where += " AND a.parent_id = :parent_id"
         params["parent_id"] = parent_id
+    elif within_id is not None:
+        where += f" AND a.id IN ({DESCENDANTS_SQL})"
+        params["within_id"] = within_id
     elif level in ("lga", "ward"):
-        raise HTTPException(400, f"parent_id is required for level {level!r}")
+        raise HTTPException(400, f"parent_id or within_id is required for level {level!r}")
     tol = DEFAULT_TOLERANCE[level] if tolerance is None else tolerance
     return schemas.FeatureCollection(
         features=_features(session, where, params, tol),
