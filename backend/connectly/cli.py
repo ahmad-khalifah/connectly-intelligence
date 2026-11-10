@@ -235,7 +235,6 @@ def bootstrap() -> None:
     typer.echo(f"done. Raw files are in {get_settings().raw_dir}")
 
 
-
 @users_app.command("create")
 def users_create(
     email: str = typer.Option(..., help="Sign-in e-mail"),
