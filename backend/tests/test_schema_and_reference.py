@@ -6,6 +6,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import text
 
+from connectly.core.migrations import include_object
 from connectly.ingest.manifest import ManifestError, all_manifests, load_manifest
 from connectly.models import Base
 from connectly.taxonomy.seed import seed_reference_data
@@ -15,12 +16,8 @@ from tests.conftest import TEST_DB_URL, alembic_config
 
 def test_models_match_migrations(engine):
     with engine.connect() as conn:
-        ctx = MigrationContext.configure(conn)
-        diff = [
-            d
-            for d in compare_metadata(ctx, Base.metadata)
-            if not (d[0] == "remove_table" and d[1].name == "spatial_ref_sys")
-        ]
+        ctx = MigrationContext.configure(conn, opts={"include_object": include_object})
+        diff = compare_metadata(ctx, Base.metadata)
     assert diff == []
 
 

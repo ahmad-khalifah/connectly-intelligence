@@ -3,19 +3,11 @@ from geoalchemy2 import alembic_helpers
 from sqlalchemy import create_engine, pool
 
 from connectly.core.config import get_settings
+from connectly.core.migrations import include_object
 from connectly.models import Base
 
 config = context.config
 target_metadata = Base.metadata
-
-# PostGIS owns these tables; never let autogenerate try to drop them.
-POSTGIS_TABLES = {"spatial_ref_sys", "topology", "layer"}
-
-
-def include_object(obj, name, type_, reflected, compare_to):
-    if type_ == "table" and name in POSTGIS_TABLES:
-        return False
-    return alembic_helpers.include_object(obj, name, type_, reflected, compare_to)
 
 
 def database_url() -> str:
