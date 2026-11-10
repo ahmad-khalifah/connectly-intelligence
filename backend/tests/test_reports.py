@@ -6,9 +6,11 @@ from tests.test_matching import m  # noqa: F401
 
 @pytest.fixture
 def r(m, session):
-    return m | {"author": auth_header(make_user(session, "researcher")),
-                "other": auth_header(make_user(session, "viewer")),
-                "admin": auth_header(make_user(session, "admin"))}
+    return m | {
+        "author": auth_header(make_user(session, "researcher")),
+        "other": auth_header(make_user(session, "viewer")),
+        "admin": auth_header(make_user(session, "admin")),
+    }
 
 
 def create(r, kind, params, who="author"):
@@ -18,11 +20,28 @@ def create(r, kind, params, who="author"):
 @pytest.mark.parametrize(
     "kind, params",
     [
-        ("brief", lambda ids: {"area_id": ids["West North"], "sector": "health", "question": "Hausa"}),
+        (
+            "brief",
+            lambda ids: {"area_id": ids["West North"], "sector": "health", "question": "Hausa"},
+        ),
         ("needs", lambda ids: {"sector": "health", "level": "lga", "scope_id": ids["West"]}),
-        ("matching", lambda ids: {"area_id": ids["West North"], "sector": "health", "need": "health.telemedicine"}),
-        ("market_entry", lambda ids: {"sector": "health", "need": "health.telemedicine", "state_ids": [ids["West"]],
-                                      "internet_requirement": "sms_ussd"}),
+        (
+            "matching",
+            lambda ids: {
+                "area_id": ids["West North"],
+                "sector": "health",
+                "need": "health.telemedicine",
+            },
+        ),
+        (
+            "market_entry",
+            lambda ids: {
+                "sector": "health",
+                "need": "health.telemedicine",
+                "state_ids": [ids["West"]],
+                "internet_requirement": "sms_ussd",
+            },
+        ),
     ],
 )
 def test_save_and_export(r, kind, params):
@@ -39,7 +58,9 @@ def test_save_and_export(r, kind, params):
 
 
 def test_access_and_delete(r):
-    rep = create(r, "needs", {"sector": "health", "level": "lga", "scope_id": r["ids"]["West"]}).json()
+    rep = create(
+        r, "needs", {"sector": "health", "level": "lga", "scope_id": r["ids"]["West"]}
+    ).json()
     c = r["c"]
     assert c.get(f"/api/v1/reports/{rep['id']}", headers=r["other"]).status_code == 404
     assert c.get(f"/api/v1/reports/{rep['id']}/pdf", headers=r["other"]).status_code == 404
@@ -53,4 +74,9 @@ def test_access_and_delete(r):
 def test_bad_parameters(r):
     assert create(r, "needs", {"sector": "health"}).status_code == 422
     assert create(r, "matching", {"area_id": r["ids"]["West"], "sector": "nope"}).status_code == 422
-    assert r["c"].post("/api/v1/reports", headers=r["author"], json={"kind": "poem", "params": {}}).status_code == 422
+    assert (
+        r["c"]
+        .post("/api/v1/reports", headers=r["author"], json={"kind": "poem", "params": {}})
+        .status_code
+        == 422
+    )

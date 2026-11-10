@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { inputClass } from "@/components/forms";
 import { type AreaDetail, type AreaSummary, clientApi } from "@/lib/api";
@@ -11,6 +11,8 @@ export function AreaPicker({ initialId, onChange }: { initialId?: number | null;
   const [lgas, setLgas] = useState<AreaSummary[]>([]);
   const [wards, setWards] = useState<AreaSummary[]>([]);
   const [sel, setSel] = useState({ state: "", lga: "", ward: "" });
+  // Unique ids: several pages use this picker and Next.js can keep visited pages mounted.
+  const uid = useId();
 
   useEffect(() => {
     clientApi<AreaSummary[]>("/api/v1/areas?level=state").then(setStates);
@@ -47,7 +49,7 @@ export function AreaPicker({ initialId, onChange }: { initialId?: number | null;
   const select = (id: string, label: string, value: string, options: AreaSummary[], level: "state" | "lga" | "ward", empty: string) => (
     <div>
       <label htmlFor={id} className="mb-1 block text-xs text-muted">{label}</label>
-      <select id={id} value={value} disabled={options.length === 0} onChange={(e) => pick(level, e.target.value)} className={inputClass}>
+      <select id={id} data-level={level} value={value} disabled={options.length === 0} onChange={(e) => pick(level, e.target.value)} className={inputClass}>
         <option value="">{empty}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>{o.name}</option>
@@ -58,9 +60,9 @@ export function AreaPicker({ initialId, onChange }: { initialId?: number | null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      {select("pick-state", "State", sel.state, states, "state", "Choose a state")}
-      {select("pick-lga", "LGA (optional)", sel.lga, lgas, "lga", "Whole state")}
-      {select("pick-ward", "Ward (optional)", sel.ward, wards, "ward", "Whole LGA")}
+      {select(`${uid}-state`, "State", sel.state, states, "state", "Choose a state")}
+      {select(`${uid}-lga`, "LGA (optional)", sel.lga, lgas, "lga", "Whole state")}
+      {select(`${uid}-ward`, "Ward (optional)", sel.ward, wards, "ward", "Whole LGA")}
     </div>
   );
 }

@@ -55,12 +55,12 @@ export function OrganisationForm({
   return (
     <form onSubmit={submit} className="space-y-6">
       <FormSection title="Organisation">
-        <Field label="Name" htmlFor="name">
-          <input id="name" name="name" required minLength={2} defaultValue={initial?.name} className={inputClass} />
+        <Field label="Name" htmlFor="org-name">
+          <input id="org-name" name="name" required minLength={2} defaultValue={initial?.name} className={inputClass} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Type" htmlFor="org_type">
-            <select id="org_type" name="org_type" required defaultValue={initial?.org_type ?? ""} className={inputClass}>
+          <Field label="Type" htmlFor="org-org_type">
+            <select id="org-org_type" name="org_type" required defaultValue={initial?.org_type ?? ""} className={inputClass}>
               <option value="" disabled>
                 Choose…
               </option>
@@ -71,25 +71,25 @@ export function OrganisationForm({
               ))}
             </select>
           </Field>
-          <Field label="Industry" htmlFor="industry" hint="As the organisation describes itself">
-            <input id="industry" name="industry" defaultValue={initial?.industry ?? ""} className={inputClass} />
+          <Field label="Industry" htmlFor="org-industry" hint="As the organisation describes itself">
+            <input id="org-industry" name="industry" defaultValue={initial?.industry ?? ""} className={inputClass} />
           </Field>
         </div>
-        <Field label="Website" htmlFor="website">
-          <input id="website" name="website" type="url" placeholder="https://" defaultValue={initial?.website ?? ""} className={inputClass} />
+        <Field label="Website" htmlFor="org-website">
+          <input id="org-website" name="website" type="url" placeholder="https://" defaultValue={initial?.website ?? ""} className={inputClass} />
         </Field>
-        <Field label="Description" htmlFor="description">
-          <textarea id="description" name="description" rows={4} defaultValue={initial?.description ?? ""} className={inputClass} />
+        <Field label="Description" htmlFor="org-description">
+          <textarea id="org-description" name="description" rows={4} defaultValue={initial?.description ?? ""} className={inputClass} />
         </Field>
       </FormSection>
       <FormSection title="Headquarters">
         <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-          <Field label="Town or city" htmlFor="headquarters">
-            <input id="headquarters" name="headquarters" defaultValue={initial?.headquarters ?? ""} className={inputClass} />
+          <Field label="Town or city" htmlFor="org-headquarters">
+            <input id="org-headquarters" name="headquarters" defaultValue={initial?.headquarters ?? ""} className={inputClass} />
           </Field>
-          <Field label="Country" htmlFor="headquarters_country" hint="Two-letter code">
+          <Field label="Country" htmlFor="org-headquarters_country" hint="Two-letter code">
             <input
-              id="headquarters_country"
+              id="org-headquarters_country"
               name="headquarters_country"
               required
               maxLength={2}
@@ -101,8 +101,8 @@ export function OrganisationForm({
           </Field>
         </div>
         {country === "NG" && (
-          <Field label="State" htmlFor="headquarters_state_id">
-            <select id="headquarters_state_id" name="headquarters_state_id" defaultValue={initial?.headquarters_state_id ?? ""} className={inputClass}>
+          <Field label="State" htmlFor="org-headquarters_state_id">
+            <select id="org-headquarters_state_id" name="headquarters_state_id" defaultValue={initial?.headquarters_state_id ?? ""} className={inputClass}>
               <option value="">Not stated</option>
               {states.map((st) => (
                 <option key={st.id} value={st.id}>
@@ -114,11 +114,11 @@ export function OrganisationForm({
         )}
       </FormSection>
       <FormSection title="Source" description="Where this information comes from. It is shown with the record.">
-        <Field label="Source" htmlFor="source_description" hint="For example: company website, retrieved 10 November 2026">
-          <input id="source_description" name="source_description" required minLength={5} defaultValue={initial?.source_description ?? ""} className={inputClass} />
+        <Field label="Source" htmlFor="org-source_description" hint="For example: company website, retrieved 10 November 2026">
+          <input id="org-source_description" name="source_description" required minLength={5} defaultValue={initial?.source_description ?? ""} className={inputClass} />
         </Field>
-        <Field label="Source link" htmlFor="source_url">
-          <input id="source_url" name="source_url" type="url" placeholder="https://" defaultValue={initial?.source_url ?? ""} className={inputClass} />
+        <Field label="Source link" htmlFor="org-source_url">
+          <input id="org-source_url" name="source_url" type="url" placeholder="https://" defaultValue={initial?.source_url ?? ""} className={inputClass} />
         </Field>
       </FormSection>
       {error && <FormMessage tone="error">{error}</FormMessage>}

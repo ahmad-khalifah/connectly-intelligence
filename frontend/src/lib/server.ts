@@ -76,11 +76,18 @@ export function sameOrigin(request: Request): boolean {
   }
 }
 
-/** Client address to pass on, so the API can rate-limit sign-ins per person, not per server. */
+/**
+ * Client address to pass on, so the API can rate-limit sign-ins per person, not per server.
+ * The left-most X-Forwarded-For entries can be set by the client, so the address is taken
+ * from the right: TRUSTED_PROXY_HOPS is the number of reverse proxies in front of this app
+ * (0 when browsers connect to it directly).
+ */
 export function forwardedFor(request: Request): Record<string, string> {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    request.headers.get("x-real-ip") ??
-    undefined;
-  return ip ? { "X-Forwarded-For": ip } : {};
+  const hops = Math.max(0, Number(process.env.TRUSTED_PROXY_HOPS ?? 0) || 0);
+  const chain = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const ip = chain.length > hops ? chain[chain.length - 1 - hops] : request.headers.get("x-real-ip");
+  return ip ? { "X-Forwarded-For": ip.slice(0, 64) } : {};
 }

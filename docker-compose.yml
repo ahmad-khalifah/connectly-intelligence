@@ -1,5 +1,15 @@
-# Local PostgreSQL 16 + PostGIS 3.4 for development. Free and runs entirely on your machine.
-#   docker compose up -d       start
+# Connectly Intelligence: PostgreSQL + PostGIS, the API and the web app. Free, runs locally.
+#
+# Development (database only; run the API and web app from source):
+#   docker compose up -d db
+#
+# Full stack:
+#   cp .env.example .env          # then set CONNECTLY_SECRET_KEY and POSTGRES_PASSWORD
+#   docker compose --profile app up -d --build
+#   docker compose exec api connectly bootstrap
+#   docker compose exec api connectly users create --email you@example.org --name "Your Name" --role admin
+#   open http://localhost:3000
+#
 #   docker compose down        stop (data is kept in the named volume)
 #   docker compose down -v     stop and DELETE all local data
 services:
@@ -8,10 +18,10 @@ services:
     container_name: connectly-db
     environment:
       POSTGRES_USER: connectly
-      POSTGRES_PASSWORD: connectly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-connectly}
       POSTGRES_DB: connectly
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - connectly-pgdata:/var/lib/postgresql/data
       - ./docker/initdb/20-test-database.sh:/docker-entrypoint-initdb.d/20-test-database.sh:ro
@@ -21,5 +31,47 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    profiles: ["app"]
+    build: ./backend
+    container_name: connectly-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CONNECTLY_DATABASE_URL: postgresql+psycopg://connectly:${POSTGRES_PASSWORD:-connectly}@db:5432/connectly
+      CONNECTLY_SECRET_KEY: ${CONNECTLY_SECRET_KEY:?set CONNECTLY_SECRET_KEY in .env}
+      CONNECTLY_ENVIRONMENT: production
+      # The API is reachable only from the web container, which passes the client address.
+      CONNECTLY_TRUST_PROXY_HEADERS: "true"
+      CONNECTLY_AI_PROVIDER: ${CONNECTLY_AI_PROVIDER:-none}
+      CONNECTLY_AI_BASE_URL: ${CONNECTLY_AI_BASE_URL:-http://host.docker.internal:11434}
+      CONNECTLY_AI_MODEL: ${CONNECTLY_AI_MODEL:-llama3.1:8b}
+    volumes:
+      # Downloads and manual dataset files. Copy a manual download in with:
+      #   docker compose cp ./file.geojson api:/data/manual/file.geojson
+      - connectly-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # No published port: only the web app talks to the API.
+    expose:
+      - "8000"
+
+  web:
+    profiles: ["app"]
+    build: ./frontend
+    container_name: connectly-web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: http://api:8000
+      # Set to false only when testing over plain http on your own machine.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
 volumes:
   connectly-pgdata:
+  connectly-data:
