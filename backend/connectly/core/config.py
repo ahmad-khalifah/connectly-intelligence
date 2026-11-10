@@ -22,6 +22,22 @@ class Settings(BaseSettings):
     # Network timeout for dataset downloads, in seconds.
     download_timeout: float = 300.0
 
+    # "development" or "production". Production refuses to start without a secret key.
+    environment: str = "development"
+    # Signs session tokens. At least 32 characters; generate with
+    #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+    secret_key: str | None = None
+    # How long a sign-in lasts, in minutes.
+    access_token_minutes: int = 480
+    # Account lock after repeated wrong passwords.
+    login_max_failures: int = 5
+    login_lock_minutes: int = 15
+    # Sign-in attempts allowed per client address in the window below (all accounts).
+    login_ip_limit: int = 30
+    login_ip_window_seconds: int = 600
+    # Trust X-Forwarded-For from a reverse proxy when recording client addresses.
+    trust_proxy_headers: bool = False
+
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"
@@ -29,6 +45,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
 
 
 @lru_cache

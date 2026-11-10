@@ -20,6 +20,8 @@ db_app = typer.Typer(help="Database schema", no_args_is_help=True)
 ingest_app = typer.Typer(help="Dataset ingestion", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 app.add_typer(ingest_app, name="ingest")
+users_app = typer.Typer(help="User accounts", no_args_is_help=True)
+app.add_typer(users_app, name="users")
 
 
 def _alembic_config() -> Config:
@@ -233,3 +235,71 @@ def bootstrap() -> None:
 
 if __name__ == "__main__":
     app()
+
+
+@users_app.command("create")
+def users_create(
+    email: str = typer.Option(..., help="Sign-in e-mail"),
+    name: str = typer.Option(..., help="Full name"),
+    role: str = typer.Option("admin", help="admin, researcher, company or viewer"),
+    password: bool = typer.Option(
+        False, "--password", help="Type a password now instead of issuing a temporary one"
+    ),
+) -> None:
+    """Create an account. Use this once to create the first admin."""
+    from sqlalchemy import select
+
+    from connectly.core.security import hash_password, password_problems
+    from connectly.models import ROLES, User
+    from connectly.services import audit
+
+    if role not in ROLES:
+        raise typer.BadParameter(f"role must be one of {', '.join(ROLES)}")
+    email = email.strip().lower()
+    if "@" not in email:
+        raise typer.BadParameter("not an e-mail address")
+    temporary = None
+    if password:
+        secret = typer.prompt("Password", hide_input=True, confirmation_prompt=True)
+        problems = password_problems(secret, email)
+        if problems:
+            typer.echo("password " + "; ".join(problems), err=True)
+            raise typer.Exit(1)
+    else:
+        import secrets
+
+        secret = temporary = secrets.token_urlsafe(12)
+    with session_scope() as s:
+        if s.scalar(select(User).where(User.email == email)):
+            typer.echo(f"an account for {email} already exists", err=True)
+            raise typer.Exit(1)
+        user = User(
+            email=email,
+            full_name=name.strip(),
+            role=role,
+            password_hash=hash_password(secret),
+            must_change_password=temporary is not None,
+        )
+        s.add(user)
+        s.flush()
+        audit.record(s, "cli", "create", "user", user.id, f"created {role} account {email}")
+    typer.echo(f"created {role} account {email}")
+    if temporary:
+        typer.echo(f"temporary password (shown once; change it at first sign-in): {temporary}")
+
+
+@users_app.command("list")
+def users_list() -> None:
+    """Show every account."""
+    with session_scope() as s:
+        rows = s.execute(
+            text(
+                "SELECT email, full_name, role, is_active, last_login_at FROM app_user "
+                "ORDER BY role, email"
+            )
+        ).all()
+    for email, name, role, active, last in rows:
+        typer.echo(
+            f"{email:36} {role:10} {'active' if active else 'disabled':8} "
+            f"{name}  last sign-in: {last or 'never'}"
+        )

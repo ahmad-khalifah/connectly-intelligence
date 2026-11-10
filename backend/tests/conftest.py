@@ -160,3 +160,50 @@ def synthetic_hierarchy(session, tmp_path, make_manifest):
         reports[level] = load_boundaries(session, make_manifest(key, level), file=path)
     session.commit()
     return reports
+
+
+# --------------------------------------------------------------------------- accounts
+
+TEST_PASSWORD = "test-password-not-real-42"
+
+
+def make_user(session: Session, role: str = "viewer", email: str | None = None, **kw):
+    """An account with TEST_PASSWORD (hashing is slow, so the hash is computed once)."""
+    from connectly.models import User
+
+    user = User(
+        email=email or f"{role}-{os.urandom(3).hex()}@example.test",
+        full_name=kw.pop("full_name", f"Test {role}"),
+        role=role,
+        password_hash=_test_hash(),
+        **kw,
+    )
+    session.add(user)
+    session.commit()
+    return user
+
+
+_HASH: list[str] = []
+
+
+def _test_hash() -> str:
+    if not _HASH:
+        from connectly.core.security import hash_password
+
+        _HASH.append(hash_password(TEST_PASSWORD))
+    return _HASH[0]
+
+
+def auth_header(user) -> dict[str, str]:
+    from connectly.core.security import create_token
+
+    token, _ = create_token(user.id, user.role, user.token_version)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_limiter():
+    from connectly.core.security import login_limiter
+
+    login_limiter.reset()
+    yield

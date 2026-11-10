@@ -5,13 +5,16 @@ from sqlalchemy import text
 
 from connectly.api.main import create_app
 from connectly.taxonomy.seed import seed_reference_data
+from tests.conftest import auth_header, make_user
 
 
 @pytest.fixture
 def client(engine, session, synthetic_hierarchy):
     seed_reference_data(session)
     session.commit()
-    return TestClient(create_app(engine))
+    c = TestClient(create_app(engine))
+    c.headers.update(auth_header(make_user(session)))
+    return c
 
 
 def ids(client, **params):

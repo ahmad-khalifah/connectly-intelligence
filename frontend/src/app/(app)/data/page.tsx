@@ -1,8 +1,10 @@
+import { unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Badge, ErrorBox, PageHeader, Panel } from "@/components/ui";
-import { ApiError, type DataGap, type Dataset, formatNumber, serverApi } from "@/lib/api";
+import { ApiError, type DataGap, type Dataset, formatNumber } from "@/lib/api";
+import { serverApi } from "@/lib/server";
 
 export default function DataPage() {
   return (
@@ -34,6 +36,7 @@ async function Registry() {
       serverApi<DataGap[]>("/api/v1/data-gaps"),
     ]);
   } catch (e) {
+    unstable_rethrow(e); // let sign-in redirects through
     return <ErrorBox message={e instanceof ApiError ? e.message : "Could not load data."} />;
   }
 

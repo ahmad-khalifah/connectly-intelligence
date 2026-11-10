@@ -110,9 +110,33 @@ export interface DataGap {
   identified_on: string | null;
 }
 
+export type Role = "admin" | "researcher" | "company" | "viewer";
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Administrator",
+  researcher: "Researcher",
+  company: "Company",
+  viewer: "Viewer",
+};
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  role: Role;
+  is_active: boolean;
+  must_change_password: boolean;
+  organisation_id: number | null;
+  last_login_at: string | null;
+  created_at: string;
+}
+
 export interface Stats {
   areas_by_level: Record<Level, number>;
   settlements: number | null;
+  settlements_verified?: number;
+  facilities_by_kind?: Record<string, number>;
+  claims?: number;
   datasets_loaded: number;
   datasets_registered: number;
   sectors: number;
@@ -129,12 +153,6 @@ export interface FeatureCollection {
   attribution: string[];
 }
 
-// Server components use API_URL (container-to-container in production);
-// the browser uses NEXT_PUBLIC_API_URL.
-export const PUBLIC_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const SERVER_API_URL = process.env.API_URL ?? PUBLIC_API_URL;
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -144,27 +162,52 @@ export class ApiError extends Error {
   }
 }
 
-async function get<T>(base: string, path: string): Promise<T> {
+export async function errorDetail(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    const d = body.detail ?? res.statusText;
+    // FastAPI validation errors are a list of {loc, msg}.
+    if (Array.isArray(d)) {
+      return d
+        .map((e: { loc?: string[]; msg?: string }) =>
+          [e.loc?.filter((l) => l !== "body").join("."), e.msg].filter(Boolean).join(": "),
+        )
+        .join("; ");
+    }
+    return String(d);
+  } catch {
+    return res.statusText || `HTTP ${res.status}`;
+  }
+}
+
+/**
+ * Browser-side calls go through this app's own server (/api/backend/...), which adds the
+ * session from an httpOnly cookie. The browser never sees the session token.
+ */
+export async function clientApi<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${base}${path}`, { cache: "no-store" });
+    res = await fetch(`/api/backend${path}`, {
+      cache: "no-store",
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
   } catch {
-    throw new ApiError(0, `Cannot reach the API at ${base}. Is the backend running?`);
+    throw new ApiError(0, "Cannot reach the server. Check your connection.");
   }
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      detail = (await res.json()).detail ?? detail;
-    } catch {
-      /* body was not JSON */
-    }
-    throw new ApiError(res.status, String(detail));
+  if (res.status === 401 && typeof window !== "undefined") {
+    hardNavigate(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }
+  if (!res.ok) throw new ApiError(res.status, await errorDetail(res));
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-export const serverApi = <T>(path: string) => get<T>(SERVER_API_URL, path);
-export const clientApi = <T>(path: string) => get<T>(PUBLIC_API_URL, path);
+export const sendJson = <T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) =>
+  clientApi<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export const formatNumber = (n: number | null | undefined, digits = 0) =>
   n == null
@@ -173,3 +216,18 @@ export const formatNumber = (n: number | null | undefined, digits = 0) =>
         maximumFractionDigits: digits,
         minimumFractionDigits: 0,
       });
+
+/** Only same-site paths may be used as a post-sign-in destination. */
+export function safeNext(next: string | null | undefined): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
+  return next;
+}
+
+/**
+ * Full page load. Used after sign-in state changes so no page rendered for the previous
+ * session stays in the client-side router cache.
+ */
+export function hardNavigate(path: string) {
+   
+  window.location.assign(path);
+}

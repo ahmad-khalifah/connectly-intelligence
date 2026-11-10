@@ -1,3 +1,4 @@
+from connectly.models.auth import ROLES, AuditLog, User
 from connectly.models.base import (
     ADMIN_LEVELS,
     PARENT_LEVEL,
@@ -18,6 +19,9 @@ from connectly.models.provenance import Dataset, IngestRun, Source
 from connectly.models.sectors import NeedCategory, Sector
 
 __all__ = [
+    "ROLES",
+    "AuditLog",
+    "User",
     "ADMIN_LEVELS",
     "PARENT_LEVEL",
     "VALUE_TYPES",

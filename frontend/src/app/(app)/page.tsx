@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -8,9 +9,9 @@ import {
   type DataGap,
   formatNumber,
   type Sector,
-  serverApi,
   type Stats,
 } from "@/lib/api";
+import { serverApi } from "@/lib/server";
 
 export default function OverviewPage() {
   return (
@@ -36,6 +37,7 @@ async function Overview() {
       serverApi<DataGap[]>("/api/v1/data-gaps?status=open"),
     ]);
   } catch (e) {
+    unstable_rethrow(e); // let sign-in redirects through
     return <ErrorBox message={e instanceof ApiError ? e.message : "Could not load data."} />;
   }
   const a = stats.areas_by_level;
@@ -53,7 +55,7 @@ async function Overview() {
         <Stat
           label="Communities"
           value={stats.settlements == null ? "—" : formatNumber(stats.settlements)}
-          note={stats.settlements == null ? "Planned for Milestone 2" : undefined}
+          note={stats.settlements === 0 ? "Settlement data not loaded yet" : undefined}
         />
         <Stat
           label="Datasets loaded"
@@ -86,7 +88,7 @@ async function Overview() {
                   <td className="py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {s.name}
-                      {s.is_priority && <Badge tone="good">priority</Badge>}
+                      {s.is_priority && <Badge tone="gold">priority</Badge>}
                     </div>
                   </td>
                   <td className="py-2 tabular-nums">{s.needs.length}</td>
@@ -96,9 +98,6 @@ async function Overview() {
               ))}
             </tbody>
           </table>
-          <p className="mt-3 text-xs text-muted">
-            Indicators are defined; their values arrive with Milestone 2 ingestion.
-          </p>
         </Panel>
 
         <Panel

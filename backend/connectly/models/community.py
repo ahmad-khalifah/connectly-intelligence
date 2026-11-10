@@ -151,8 +151,13 @@ class Claim(TimestampMixin, Base):
         server_default="unverified",
         nullable=False,
     )
-    created_by_id: Mapped[int | None] = mapped_column(Integer)  # FK added with users (0003)
-    verified_by_id: Mapped[int | None] = mapped_column(Integer)
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), index=True
+    )
+    verified_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL")
+    )
+    verification_note: Mapped[str | None] = mapped_column(Text)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=sa_true(), nullable=False

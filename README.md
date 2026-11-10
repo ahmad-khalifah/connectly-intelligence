@@ -9,8 +9,8 @@ Missing data is recorded as a gap and shown to users. Nothing is invented to fil
 
 | | |
 | --- | --- |
-| Status | Milestone 1 complete: database, administrative hierarchy, ingestion pipeline, API, explorer. See [docs/milestones/milestone-1.md](docs/milestones/milestone-1.md). |
-| Coverage | Nigeria: country, 37 states, 774 LGAs (real GRID3 boundaries). Wards and communities: next milestone, starting with Adamawa. |
+| Status | Milestones 1–3 complete: database and boundaries; wards, population and community database; accounts, roles, audit log and the Connectly brand. Reports in [docs/milestones/](docs/milestones/). |
+| Coverage | Nigeria: country, 37 states, 774 LGAs, 9,308 wards (GRID3, CC BY 4.0) with modelled ward population. Facilities, settlements and survey statistics load from local downloads: see [docs/data-ingestion.md](docs/data-ingestion.md). |
 | Cost | $0. Everything runs locally on free, open-source software and openly licensed data. No paid APIs. |
 
 ## Stack
@@ -56,12 +56,20 @@ python -m venv .venv
 source .venv/bin/activate            # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 
-connectly bootstrap                  # migrate, seed sectors and gaps, download + load boundaries
+cp .env.example .env                 # then set CONNECTLY_SECRET_KEY (see below)
+connectly bootstrap                  # migrate, seed, download + load boundaries and wards
+connectly users create --email you@example.org --name "Your Name" --role admin
 uvicorn connectly.api.main:app --reload --port 8000
 ```
 
-`connectly bootstrap` downloads about 12 MB of boundary files from geoBoundaries into
-`data/raw/`, records their checksums, and loads them. API docs: http://localhost:8000/docs
+`connectly bootstrap` downloads about 40 MB of boundary files from GitHub-hosted mirrors of
+geoBoundaries into `data/raw/`, verifies their checksums, and loads them.
+`connectly users create` prints a temporary password; sign in with it and choose your own.
+API docs (development only): http://localhost:8000/docs
+
+Generate the secret key with
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`. Without one, development
+uses a random key and every sign-in ends when the API restarts; production refuses to start.
 
 ### 3. Frontend
 
@@ -80,8 +88,11 @@ npm run dev                          # http://localhost:3000
 | `connectly seed` | Load sectors, need categories, indicator definitions and data gaps |
 | `connectly ingest list` | Show every known dataset, its status and whether a local copy exists |
 | `connectly ingest fetch <key>` | Download a dataset that has a direct download link |
-| `connectly ingest load <key> [--file PATH] [--within-state NAME]` | Validate and load a boundary dataset |
+| `connectly ingest load <key> [--file PATH] [--within-state NAME]` | Validate and load any dataset |
 | `connectly ingest runs` | Show the ingestion audit log |
+| `connectly derive-rollups` / `connectly derive` | Recompute population roll-ups and derived indicators |
+| `connectly users create --email E --name N --role R` | Create an account (roles: admin, researcher, company, viewer) |
+| `connectly users list` | Show every account |
 | `pytest` | Run the backend tests (uses `connectly_test`) |
 
 ## Repository layout
@@ -96,11 +107,26 @@ backend/
     taxonomy/       sectors, need categories, indicator definitions, recorded data gaps
   alembic/          database migrations
   tests/            unit, API and real-data tests
-frontend/           Next.js app: overview, explorer (map), data sources
+frontend/           Next.js app (sign-in, overview, explorer, data sources, admin)
+  public/brand/     official Connectly logo files (do not edit)
 docker/             database init script
-docs/               milestone reports
+docs/               milestone reports, data ingestion guide, brand/ (original logo PDF)
 data/raw/           downloaded datasets (git-ignored)
 ```
+
+## Accounts and roles
+
+| Role | Can |
+| --- | --- |
+| Admin | Everything, including accounts and the audit log |
+| Researcher | Read everything; add community claims; review other researchers' claims |
+| Company | Read everything; manage its own organisation's solutions |
+| Viewer | Read only |
+
+Every page and API endpoint except `/health` and sign-in needs an account. Passwords are
+hashed with Argon2id; accounts lock for 15 minutes after 5 wrong passwords. The browser keeps
+the session in an httpOnly cookie and never sees the token. Every sign-in and change is
+written to the audit log (Admin → Audit log).
 
 ## Adding a dataset
 

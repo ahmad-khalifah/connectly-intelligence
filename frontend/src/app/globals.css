@@ -1,25 +1,85 @@
 @import "tailwindcss";
 
+/*
+ * Connectly visual identity, taken from the official logo (docs/brand):
+ *   maroon #6B1420 and gold #D9A441, geometric sans (Poppins) for display type.
+ * Gold is too light for text on white (contrast 2.2:1), so it is used for marks, rules and
+ * fills only; text that needs a gold tone uses --color-gold-ink (contrast 6:1).
+ * There is no dark theme: the logo is defined for light backgrounds and is not recoloured.
+ */
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Arial, sans-serif;
+  --font-display: "Poppins", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  --color-ink: #13201d;
-  --color-muted: #5b6b67;
-  --color-line: #dbe3e0;
-  --color-paper: #f6f8f7;
+  --color-ink: #1f1517;
+  --color-muted: #6a5d5f;
+  --color-line: #e9e1db;
+  --color-paper: #faf7f3;
   --color-panel: #ffffff;
-  --color-brand: #0e6b5c;
-  --color-brand-soft: #e3f1ee;
-  --color-warn: #8a5a00;
-  --color-warn-soft: #fff4dc;
+
+  --color-brand: #6b1420;
+  --color-brand-strong: #520f18;
+  --color-brand-soft: #f6e9ea;
+  --color-gold: #d9a441;
+  --color-gold-soft: #fbf3e3;
+  --color-gold-ink: #7f5a12;
+
+  --color-good: #1d6b45;
+  --color-good-soft: #e5f2ea;
+  --color-warn: #8a4b00;
+  --color-warn-soft: #fff3df;
+  --color-bad: #a3221b;
+  --color-bad-soft: #fdecea;
+
+  --animate-brand-pulse: brand-pulse 1.6s ease-in-out infinite;
+  --animate-brand-bar: brand-bar 1.4s ease-in-out infinite;
+
+  @keyframes brand-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+  @keyframes brand-bar {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(250%);
+    }
+  }
 }
 
 html,
 body {
   background: var(--color-paper);
   color: var(--color-ink);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* MapLibre popups inherit the app type. */

@@ -7,6 +7,7 @@ from sqlalchemy import text
 from connectly.api.main import create_app
 from connectly.ingest import points
 from connectly.services.profiles import area_profile
+from tests.conftest import auth_header, make_user
 from tests.test_community_ingest import points_manifest, seeded, wards  # noqa: F401
 
 
@@ -41,7 +42,9 @@ def client(engine, seeded, wards, tmp_path, make_manifest):  # noqa: F811
         )
     )
     seeded.commit()
-    return TestClient(create_app(engine))
+    c = TestClient(create_app(engine))
+    c.headers.update(auth_header(make_user(seeded)))
+    return c
 
 
 def area_id(session, name, level="ward"):
