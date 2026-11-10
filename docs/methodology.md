@@ -55,3 +55,45 @@ evidence loaded". They are not an absolute measure of need, and they change as d
 
 Agriculture and transport have no open indicator loaded, so they are not scored. The app says
 so; it does not guess.
+
+## Technology matching
+
+Code: `backend/connectly/services/matching.py`.
+
+**Which solutions are considered.** Only published solutions from approved organisations, and
+only those that address one of the *target needs*. The target needs are either:
+
+- the need the user chose, or
+- the needs linked to indicators where the area is worse than at least half of comparable
+  areas (`INDICATOR_NEEDS`).
+
+If neither applies, the user is asked to choose a need. Solutions in the same sector that do
+not address a target need are listed as "not recommended", with that reason. Products are never
+recommended for being in the same sector alone.
+
+**Criteria.** Each criterion scores from 0 to 1, or is *unknown* when the data it needs is
+missing. Unknown criteria are left out of the score and lower the confidence. They never count
+as a pass or a fail.
+
+| Criterion | Weight | How it is judged |
+| --- | --- | --- |
+| Relevance | 20% | 0.85 for one target need addressed, 1.0 for two or more |
+| Suitability | 10% | Target groups against beneficiary groups (1.0 if they overlap, 0.2 if not). Literacy needed against women's literacy (DHS, state level). |
+| Availability | 15% | Nationwide or operates here 1.0; operates in part of the area 0.7; plans to expand here 0.4; not available 0.1; coverage not stated is unknown |
+| Affordability | 10% | With a price ceiling: lowest price ≤ ceiling 1.0, ≤ 2× ceiling 0.5, otherwise 0.1. Without one, the pricing model: free or donor-funded 1.0, freemium 0.8, pay per use, pay-as-you-go or contract 0.7, subscription 0.5, one-off purchase 0.4. No open income data exists to judge local ability to pay. |
+| Internet and devices | 15% | Internet requirement against distance to the nearest recorded mobile site: up to 5 km 1.0, up to 15 km 0.6, beyond that 0.3. 4G needs a site within 3 km. Device requirement against household phone ownership (smartphone ownership is not measured, so that share is scaled by 0.6). |
+| Language | 10% | Languages supported against languages recorded for the area: overlap 1.0; no overlap 0.2, or 0.4 with voice or audio features. Unknown when either side is missing. |
+| Distribution | 10% | Best usable channel: a channel scores 1.0 when the facilities it relies on (health facilities, schools, financial points, mobile sites, markets) are recorded in the area. Direct sign-up depends on connectivity. Partner channels cannot be measured. |
+| Feasibility | 10% | Power requirement against household electricity access; provider presence; whether the record has been verified |
+
+**Score and ranking.**
+
+- Score = weighted mean over the criteria that are known, × 100.
+- Confidence = the weight of known criteria × 1.0 if the record is verified, or × 0.8 if it
+  is not. Labels: high is 0.7 or more, medium is 0.45 or more, otherwise low.
+- Ranking orders by score × (0.5 + 0.5 × confidence), so a well-evidenced match ranks above
+  a thinly evidenced one with a similar score.
+
+Every result lists its strengths (criteria scoring 0.8 or more) and the points to check before
+acting (criteria under 0.5, or unknown). Each criterion shows its reason and its evidence.
+Matches are suggestions drawn from directory records, not endorsements.

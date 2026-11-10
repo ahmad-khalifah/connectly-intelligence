@@ -9,7 +9,7 @@ Missing data is recorded as a gap and shown to users. Nothing is invented to fil
 
 | | |
 | --- | --- |
-| Status | Milestones 1–6 complete: boundaries; wards, population and community database; accounts, roles, audit log and brand; technology solutions directory; explorer with indicator maps and community profiles; needs assessment ([method](docs/methodology.md)). Reports in [docs/milestones/](docs/milestones/). |
+| Status | Milestones 1–7 complete: boundaries; wards, population and community database; accounts, roles, audit log and brand; technology solutions directory; explorer with indicator maps and community profiles; needs assessment and technology matching ([methods](docs/methodology.md)). Reports in [docs/milestones/](docs/milestones/). |
 | Coverage | Nigeria: country, 37 states, 774 LGAs, 9,308 wards (GRID3, CC BY 4.0) with modelled ward population. Facilities, settlements and survey statistics load from local downloads: see [docs/data-ingestion.md](docs/data-ingestion.md). |
 | Cost | $0. Everything runs locally on free, open-source software and openly licensed data. No paid APIs. |
 

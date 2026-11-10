@@ -392,3 +392,50 @@ export interface NeedAssessment {
 }
 
 export const CONFIDENCE_TONE = { high: "good", medium: "gold", low: "warn", insufficient: "neutral" } as const;
+
+export interface MatchCriterion {
+  key: string;
+  label: string;
+  weight: number;
+  score: number | null;
+  reason: string;
+  evidence: string[];
+}
+
+export interface MatchResult {
+  rank: number;
+  solution: {
+    id: number;
+    name: string;
+    summary: string;
+    organisation_id: number;
+    organisation_name: string;
+    sector_name: string;
+    verification_status: string;
+    website: string | null;
+  };
+  availability: string | null;
+  score: number;
+  confidence: number;
+  confidence_label: "high" | "medium" | "low";
+  criteria_known: number;
+  criteria: MatchCriterion[];
+  strengths: string[];
+  cautions: string[];
+}
+
+export interface MatchResponse {
+  area: { id: number; name: string; level: Level };
+  breadcrumbs: { id: number; name: string; level: Level }[];
+  sector: string;
+  sector_name: string;
+  need: string | null;
+  target_needs: { code: string; name: string }[];
+  needs_basis: "selected" | "gap_evidence" | "none";
+  gap_evidence: string[];
+  area_languages: string[];
+  status: "ok" | "no_matches" | "needs_unclear";
+  message: string | null;
+  results: MatchResult[];
+  excluded: { id: number; name: string; organisation_name: string; reason: string }[];
+}

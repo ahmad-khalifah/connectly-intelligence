@@ -330,7 +330,10 @@ async function Gaps({ areaId }: { areaId: number }) {
                   {s.status === "no_model" ? "No open indicator for this sector." : "Not enough data loaded to score."}
                 </p>
               )}
-              <Link href={`/needs?sector=${s.sector}&level=${n.level}&scope=${s.scope.id}`} className="mt-2 inline-block text-xs text-brand hover:underline">Compare</Link>
+              <div className="mt-2 flex gap-3 text-xs">
+                <Link href={`/needs?sector=${s.sector}&level=${n.level}&scope=${s.scope.id}`} className="text-brand hover:underline">Compare</Link>
+                <Link href={`/matching?area=${areaId}&sector=${s.sector}`} className="text-brand hover:underline">Find solutions</Link>
+              </div>
             </li>
           );
         })}
