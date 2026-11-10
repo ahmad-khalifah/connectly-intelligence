@@ -54,8 +54,10 @@ class User(TimestampMixin, Base):
     )
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # For company accounts: the organisation they may manage (FK added with the directory).
-    organisation_id: Mapped[int | None] = mapped_column(Integer)
+    # For company accounts: the organisation they may manage.
+    organisation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organisation.id", ondelete="SET NULL")
+    )
 
 
 class AuditLog(Base):

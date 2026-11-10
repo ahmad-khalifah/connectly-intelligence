@@ -6,16 +6,26 @@ import { usePathname } from "next/navigation";
 export const NAV = [
   { href: "/", label: "Overview" },
   { href: "/explorer", label: "Explorer" },
+  { href: "/directory", label: "Directory" },
   { href: "/data", label: "Data sources" },
 ];
 
 export function NavLinks() {
-  const pathname = usePathname();
+  return <NavList pathname={usePathname()} />;
+}
+
+/** Rendered before the current path is known (dynamic routes stream it in). */
+export function NavLinksFallback() {
+  return <NavList pathname={null} />;
+}
+
+function NavList({ pathname }: { pathname: string | null }) {
   return (
     <nav aria-label="Main" className="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 lg:mx-0 lg:w-auto lg:px-0">
       <ul className="flex gap-1 text-sm">
         {NAV.map((n) => {
-          const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
+          const active =
+            pathname !== null && (n.href === "/" ? pathname === "/" : pathname.startsWith(n.href));
           return (
             <li key={n.href}>
               <Link

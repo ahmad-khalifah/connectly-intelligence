@@ -20,7 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy import true as sa_true
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from connectly.models.base import (
@@ -139,6 +139,8 @@ class Claim(TimestampMixin, Base):
     subject_id: Mapped[int] = mapped_column(Integer, nullable=False)
     attribute: Mapped[str] = mapped_column(String(64), nullable=False)
     value_text: Mapped[str] = mapped_column(Text, nullable=False)
+    # Structured values for attributes that have a vocabulary (languages: ISO 639 codes).
+    value_codes: Mapped[list[str] | None] = mapped_column(ARRAY(String(16)))
     value_type: Mapped[str] = mapped_column(
         str_enum(*VALUE_TYPES, name="claim_value_type"), nullable=False
     )

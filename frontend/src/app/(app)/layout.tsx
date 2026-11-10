@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Mark, ProductLockup } from "@/components/brand";
-import { NavLinks } from "@/components/shell/NavLinks";
+import { NavLinks, NavLinksFallback } from "@/components/shell/NavLinks";
 import { UserMenu } from "@/components/shell/UserMenu";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -25,7 +25,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
               <UserMenu />
             </Suspense>
           </div>
-          <NavLinks />
+          <Suspense fallback={<NavLinksFallback />}>
+            <NavLinks />
+          </Suspense>
         </div>
       </header>
       <main id="main" className="flex-1">

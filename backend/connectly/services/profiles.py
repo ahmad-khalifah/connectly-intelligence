@@ -141,7 +141,7 @@ def claims_for(session: Session, subject_type: str, subject_id: int) -> list[dic
     rows = session.execute(
         text(
             """
-            SELECT id, attribute, value_text, value_type, source_description, source_url,
+            SELECT id, attribute, value_text, value_codes, value_type, source_description, source_url,
                    observed_on, verification_status, created_at, updated_at
             FROM claim WHERE subject_type = :t AND subject_id = :i AND is_active
             ORDER BY attribute, updated_at DESC

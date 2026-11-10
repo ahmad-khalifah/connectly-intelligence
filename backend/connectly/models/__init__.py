@@ -13,12 +13,22 @@ from connectly.models.community import (
     Facility,
     Settlement,
 )
+from connectly.models.directory import (
+    Organisation,
+    Solution,
+    SolutionCoverage,
+    SolutionNeed,
+)
 from connectly.models.evidence import DataGap, Indicator, Observation
 from connectly.models.geography import AdminArea, PlaceAlias
 from connectly.models.provenance import Dataset, IngestRun, Source
 from connectly.models.sectors import NeedCategory, Sector
 
 __all__ = [
+    "Organisation",
+    "Solution",
+    "SolutionCoverage",
+    "SolutionNeed",
     "ROLES",
     "AuditLog",
     "User",

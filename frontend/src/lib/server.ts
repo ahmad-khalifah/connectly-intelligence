@@ -2,7 +2,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ApiError, errorDetail, type User } from "@/lib/api";
 
@@ -33,6 +33,7 @@ export async function serverApi<T>(path: string): Promise<T> {
     throw new ApiError(0, `Cannot reach the API at ${API_URL}. Is the backend running?`);
   }
   if (res.status === 401) redirect("/login");
+  if (res.status === 404) notFound();
   if (!res.ok) {
     const detail = await errorDetail(res);
     if (res.status === 403 && detail.includes("temporary password")) redirect("/account/password");

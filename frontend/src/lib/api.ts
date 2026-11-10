@@ -206,7 +206,11 @@ export async function clientApi<T>(path: string, init?: RequestInit): Promise<T>
   return res.json() as Promise<T>;
 }
 
-export const sendJson = <T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) =>
+export const sendJson = <T>(
+  path: string,
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
+  body?: unknown,
+) =>
   clientApi<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export const formatNumber = (n: number | null | undefined, digits = 0) =>

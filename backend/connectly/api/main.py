@@ -6,7 +6,15 @@ from sqlalchemy import Engine, text
 
 from connectly import __version__
 from connectly.api.deps import current_user
-from connectly.api.routers import audit_log, auth, claims, community, geography, registry
+from connectly.api.routers import (
+    audit_log,
+    auth,
+    claims,
+    community,
+    directory,
+    geography,
+    registry,
+)
 from connectly.core.config import get_settings
 from connectly.core.db import get_engine, make_sessionmaker
 from connectly.core.security import signing_key
@@ -59,6 +67,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.include_router(community.router, dependencies=signed_in)
     app.include_router(claims.router)
     app.include_router(audit_log.router)
+    app.include_router(directory.router)
     return app
 
 

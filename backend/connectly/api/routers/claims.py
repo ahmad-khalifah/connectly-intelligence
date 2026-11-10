@@ -6,12 +6,13 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from connectly.api.deps import client_ip, current_user, get_session, require_researcher
 from connectly.models import CLAIM_ATTRIBUTES, AdminArea, Claim, Settlement, User
+from connectly.models.directory import LANGUAGES
 from connectly.services import audit
 from connectly.services.personal_data import personal_data_found
 
@@ -24,6 +25,7 @@ ReviewStatus = Literal["source_verified", "field_verified", "disputed"]
 CLAIM_FIELDS = (
     "attribute",
     "value_text",
+    "value_codes",
     "value_type",
     "source_description",
     "source_url",
@@ -39,10 +41,18 @@ class ClaimIn(BaseModel):
     subject_id: int
     attribute: str
     value_text: str = Field(min_length=2, max_length=4000)
+    value_codes: list[str] | None = Field(
+        None, description="For languages: ISO 639 codes from /directory/vocabularies"
+    )
     value_type: ClaimValueType
     source_description: str = Field(min_length=5, max_length=2000)
     source_url: str | None = Field(None, max_length=1024)
     observed_on: str | None = Field(None, max_length=32, description="Date or period observed")
+
+    @model_validator(mode="after")
+    def codes_match_attribute(self) -> ClaimIn:
+        check_codes(self.attribute, self.value_codes)
+        return self
 
     @field_validator("attribute")
     @classmethod
@@ -59,8 +69,20 @@ class ClaimIn(BaseModel):
         return v or None
 
 
+def check_codes(attribute: str, codes: list[str] | None) -> None:
+    if attribute == "languages":
+        if not codes:
+            raise ValueError("value_codes is required for languages (ISO 639 codes)")
+        unknown = [c for c in codes if c not in LANGUAGES]
+        if unknown:
+            raise ValueError(f"unknown language codes: {', '.join(unknown)}")
+    elif codes:
+        raise ValueError(f"value_codes is only used for languages, not {attribute}")
+
+
 class ClaimUpdateIn(BaseModel):
     value_text: str | None = Field(None, min_length=2, max_length=4000)
+    value_codes: list[str] | None = None
     value_type: ClaimValueType | None = None
     source_description: str | None = Field(None, min_length=5, max_length=2000)
     source_url: str | None = Field(None, max_length=1024)
@@ -77,7 +99,8 @@ class RetireIn(BaseModel):
 
 
 CLAIM_SELECT = """
-    SELECT c.id, c.subject_type, c.subject_id, c.attribute, c.value_text, c.value_type,
+    SELECT c.id, c.subject_type, c.subject_id, c.attribute, c.value_text, c.value_codes,
+           c.value_type,
            c.source_description, c.source_url, c.observed_on, c.verification_status,
            c.verification_note, c.verified_at, c.is_active, c.created_at, c.updated_at,
            c.created_by_id, cu.full_name AS created_by, vu.full_name AS verified_by,
@@ -195,6 +218,11 @@ def update_claim(
     if not changes:
         raise HTTPException(422, "nothing to change")
     _check_text(changes.get("value_text"), changes.get("source_description"))
+    if "value_codes" in changes:
+        try:
+            check_codes(claim.attribute, changes["value_codes"])
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
     before = audit.snapshot(claim, CLAIM_FIELDS)
     for k, v in changes.items():
         setattr(claim, k, v)

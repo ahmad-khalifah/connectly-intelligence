@@ -22,6 +22,8 @@ app.add_typer(db_app, name="db")
 app.add_typer(ingest_app, name="ingest")
 users_app = typer.Typer(help="User accounts", no_args_is_help=True)
 app.add_typer(users_app, name="users")
+directory_app = typer.Typer(help="Technology solutions directory", no_args_is_help=True)
+app.add_typer(directory_app, name="directory")
 
 
 def _alembic_config() -> Config:
@@ -303,3 +305,21 @@ def users_list() -> None:
             f"{email:36} {role:10} {'active' if active else 'disabled':8} "
             f"{name}  last sign-in: {last or 'never'}"
         )
+
+
+@directory_app.command("import")
+def directory_import(path: Path) -> None:
+    """Create or update organisations and solutions from a YAML file (all or nothing)."""
+    from connectly.services.directory import DirectoryError
+    from connectly.services.directory_import import import_directory
+
+    try:
+        with session_scope() as s:
+            r = import_directory(s, path)
+    except DirectoryError as e:
+        typer.echo(f"nothing imported: {e}", err=True)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"organisations: {r.organisations_created} created, {r.organisations_updated} updated; "
+        f"solutions: {r.solutions_created} created, {r.solutions_updated} updated"
+    )

@@ -25,7 +25,7 @@ from connectly.core.security import (
     password_problems,
     verify_password,
 )
-from connectly.models import ROLES, User
+from connectly.models import ROLES, Organisation, User
 from connectly.services import audit
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
@@ -187,6 +187,15 @@ def list_users(
     return list(session.scalars(select(User).order_by(User.full_name)))
 
 
+def _check_organisation(session: Session, role: str, organisation_id: int | None) -> None:
+    if organisation_id is None:
+        return
+    if role != "company":
+        raise HTTPException(422, "only company accounts are linked to an organisation")
+    if session.get(Organisation, organisation_id) is None:
+        raise HTTPException(422, f"no organisation {organisation_id}")
+
+
 def _active_admins(session: Session) -> int:
     return session.scalar(
         select(func.count()).select_from(User).where(User.role == "admin", User.is_active)
@@ -203,6 +212,7 @@ def create_user(
     email = normalise_email(body.email)
     if session.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "an account with this e-mail already exists")
+    _check_organisation(session, body.role, body.organisation_id)
     password = temporary_password()
     user = User(
         email=email,
@@ -253,9 +263,13 @@ def update_user(
     )
     if removing_admin and _active_admins(session) <= 1:
         raise HTTPException(409, "this is the only active admin account")
+    new_role = changes.get("role", user.role)
+    _check_organisation(session, new_role, changes.get("organisation_id", user.organisation_id))
     for k, v in changes.items():
         setattr(user, k, v.strip() if isinstance(v, str) and k == "full_name" else v)
-    if "role" in changes or changes.get("is_active") is False:
+    if new_role != "company":
+        user.organisation_id = None
+    if "role" in changes or changes.get("is_active") is False or "organisation_id" in changes:
         user.token_version += 1
     after = audit.snapshot(user, USER_FIELDS)
     audit.record(
