@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     # Sign-in attempts allowed per client address in the window below (all accounts).
     login_ip_limit: int = 30
     login_ip_window_seconds: int = 600
+    # Optional language model for narrative summaries. "none" (default) keeps everything
+    # deterministic. "ollama" uses a local Ollama server; "openai_compatible" any server with
+    # the /v1/chat/completions API (llama.cpp, vLLM, LM Studio...). Only free, self-hosted
+    # servers are intended; hosted APIs may charge.
+    ai_provider: str = "none"
+    ai_base_url: str = "http://localhost:11434"
+    ai_model: str = "llama3.1:8b"
+    ai_api_key: str | None = None
+    ai_timeout: float = 120.0
     # Trust X-Forwarded-For from a reverse proxy when recording client addresses.
     trust_proxy_headers: bool = False
 

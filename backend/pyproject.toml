@@ -66,6 +66,8 @@ ignore = ["B008"]
 "tests/**" = ["E501", "F811"]
 "connectly/services/**" = ["E501"]
 "connectly/api/routers/**" = ["E501"]
+"connectly/ai/**" = ["E501"]
+"connectly/services/market_entry.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["alembic"]

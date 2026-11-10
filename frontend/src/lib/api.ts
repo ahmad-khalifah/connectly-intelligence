@@ -480,3 +480,49 @@ export const ITEM_KIND: Record<MarketItem["kind"], { label: string; tone: "good"
   recommendation: { label: "Recommendation", tone: "brand" },
   gap: { label: "Data gap", tone: "neutral" },
 };
+
+export interface BriefStatement {
+  kind: MarketItem["kind"];
+  text: string;
+  cites: string[];
+}
+
+export interface BriefEvidence {
+  id: string;
+  kind: string;
+  text: string;
+  source: string;
+  value_type: string | null;
+  verification: string | null;
+}
+
+export interface IntelligenceBrief {
+  area: { id: number; name: string; level: Level; place: string };
+  sector: string;
+  sector_name: string;
+  question: string | null;
+  sufficient_evidence: boolean;
+  sections: { key: string; statements: BriefStatement[] }[];
+  evidence: BriefEvidence[];
+  narrative: {
+    status: "accepted" | "rejected" | "disabled" | "insufficient" | "error" | "skipped";
+    text: string | null;
+    problems: string[];
+    message: string | null;
+    model?: string;
+  };
+}
+
+export const BRIEF_SECTION: Record<string, string> = {
+  profile: "Community profile",
+  infrastructure: "Available infrastructure",
+  gaps: "Identified service gaps",
+  beneficiaries: "Potential beneficiary groups",
+  barriers: "Technology adoption barriers",
+  solutions: "Relevant available solutions",
+  opportunities: "Implementation opportunities",
+  limitations: "Data limitations",
+  confidence: "Confidence",
+  sources: "Supporting sources",
+  related: "Related to your question",
+};
