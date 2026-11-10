@@ -1,20 +1,19 @@
-# Connectly Intelligence — frontend
+# Connectly Intelligence: web app
 
 Next.js 16 (App Router, cache components), TypeScript, Tailwind CSS 4, MapLibre GL.
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000, expects the API on http://localhost:8000
+npm run dev          # http://localhost:3000 (expects the API on http://localhost:8000)
 npm run lint
 npm run typecheck
-npm run build
+npm test             # unit tests (Node test runner)
+npm run build        # production build (standalone output, used by the Dockerfile)
+npm run e2e          # browser tests against a running stack; see e2e/README.md
 ```
 
-- `src/app/` pages: `/` overview, `/explorer` map explorer, `/data` datasets and gaps.
-- `src/lib/api.ts` typed API client (mirrors `backend/connectly/api/schemas.py`).
-- `src/components/explorer/AreaMap.tsx` MapLibre map. It draws only Connectly's own
-  boundary layers on a plain background, so it needs no tile service or API key. Set
-  `NEXT_PUBLIC_BASEMAP_STYLE_URL` to add a free basemap underneath.
-- `scripts/copy-maplibre-worker.mjs` copies MapLibre's web worker into `public/` before
-  `dev` and `build`. Without it the map renders no data, because the bundler breaks the
-  worker's default location.
+- The browser never calls the API directly. Pages read data on the server with the session
+  cookie (`src/lib/server.ts`), and client components go through `/api/backend/...`
+  (`src/app/api/backend/[...path]/route.ts`).
+- Brand: the official logo is in `public/brand/` (do not edit; see `docs/brand/README.md`), and
+  the colours and fonts are in `src/app/globals.css`.

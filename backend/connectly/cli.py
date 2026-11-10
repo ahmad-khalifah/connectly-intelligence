@@ -235,9 +235,6 @@ def bootstrap() -> None:
     typer.echo(f"done. Raw files are in {get_settings().raw_dir}")
 
 
-if __name__ == "__main__":
-    app()
-
 
 @users_app.command("create")
 def users_create(
@@ -323,3 +320,7 @@ def directory_import(path: Path) -> None:
         f"organisations: {r.organisations_created} created, {r.organisations_updated} updated; "
         f"solutions: {r.solutions_created} created, {r.solutions_updated} updated"
     )
+
+
+if __name__ == "__main__":
+    app()
