@@ -141,10 +141,16 @@ def claims_for(session: Session, subject_type: str, subject_id: int) -> list[dic
     rows = session.execute(
         text(
             """
-            SELECT id, attribute, value_text, value_codes, value_type, source_description, source_url,
-                   observed_on, verification_status, created_at, updated_at
-            FROM claim WHERE subject_type = :t AND subject_id = :i AND is_active
-            ORDER BY attribute, updated_at DESC
+            SELECT c.id, c.subject_type, c.subject_id, c.attribute, c.value_text, c.value_codes,
+                   c.value_type, c.source_description, c.source_url, c.observed_on,
+                   c.verification_status, c.verification_note, c.verified_at, c.is_active,
+                   c.created_by_id, cu.full_name AS created_by, vu.full_name AS verified_by,
+                   c.created_at, c.updated_at
+            FROM claim c
+            LEFT JOIN app_user cu ON cu.id = c.created_by_id
+            LEFT JOIN app_user vu ON vu.id = c.verified_by_id
+            WHERE c.subject_type = :t AND c.subject_id = :i AND c.is_active
+            ORDER BY c.attribute, c.updated_at DESC
             """
         ),
         {"t": subject_type, "i": subject_id},

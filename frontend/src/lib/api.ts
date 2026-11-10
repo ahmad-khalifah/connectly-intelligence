@@ -235,3 +235,114 @@ export function hardNavigate(path: string) {
    
   window.location.assign(path);
 }
+
+export interface IndicatorInfo {
+  code: string;
+  name: string;
+  unit: string | null;
+  higher_is_worse: boolean | null;
+  description: string | null;
+  method: string | null;
+  sector: string | null;
+  values_by_level: Partial<Record<Level, number>>;
+}
+
+export interface ChoroplethValue {
+  id: number;
+  name: string;
+  value: number;
+  lower_bound: number | null;
+  upper_bound: number | null;
+  period: string;
+  value_type: string;
+  verification_status: string;
+  dataset: string;
+}
+
+export interface ChoroplethResponse {
+  indicator: { code: string; name: string; unit: string | null; higher_is_worse: boolean | null };
+  level: Level;
+  values: ChoroplethValue[];
+  missing: { id: number; name: string }[];
+  quintile_breaks: number[];
+}
+
+export function formatValue(v: number | null | undefined, unit: string | null | undefined) {
+  if (v == null) return "—";
+  const digits = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2;
+  const n = formatNumber(v, digits);
+  if (!unit) return n;
+  if (unit === "%" || unit === "percent") return `${n}%`;
+  return `${n} ${unit}`;
+}
+
+export interface ProfileValue {
+  indicator: string;
+  name: string;
+  unit: string | null;
+  sector: string | null;
+  value: number | null;
+  value_text: string | null;
+  lower_bound: number | null;
+  upper_bound: number | null;
+  interval_note: string | null;
+  period: string;
+  value_type: string;
+  verification_status: string;
+  measured_at_level: Level;
+  measured_at_area: string | null;
+  is_context: boolean;
+  higher_is_worse: boolean | null;
+  dataset: string;
+  dataset_title: string;
+  licence: string | null;
+  attribution: string | null;
+  source_reference: string | null;
+  note: string | null;
+  updated_at: string | null;
+}
+
+export interface Claim {
+  id: number;
+  subject_type: "admin_area" | "settlement";
+  subject_id: number;
+  attribute: string;
+  attribute_label: string;
+  value_text: string;
+  value_codes: string[] | null;
+  value_type: string;
+  source_description: string;
+  source_url: string | null;
+  observed_on: string | null;
+  verification_status: string;
+  verification_note?: string | null;
+  verified_at?: string | null;
+  is_active?: boolean;
+  created_by_id?: number | null;
+  created_by?: string | null;
+  verified_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AreaProfile {
+  id: number;
+  level: Level;
+  name: string;
+  state: string | null;
+  lga: string | null;
+  coordinates: { lon: number; lat: number; kind: string };
+  area_km2: number | null;
+  population: ProfileValue | null;
+  urban_classification: ProfileValue | null;
+  indicators: ProfileValue[];
+  context_indicators: ProfileValue[];
+  missing_indicators: { code: string; name: string; sector: string | null }[];
+  facilities: { kind: string; total: number; with_status: number; datasets: string[] }[];
+  facility_coverage: Record<string, string[]>;
+  settlement_count: number | null;
+  claims: Claim[];
+  data_gaps: { code: string; title: string; description: string; sector: string | null; needs_field_verification: boolean }[];
+  sectors: { code: string; name: string; is_priority: boolean }[];
+  last_updated: string | null;
+}

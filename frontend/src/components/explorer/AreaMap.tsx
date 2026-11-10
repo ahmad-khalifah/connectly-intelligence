@@ -1,50 +1,113 @@
 "use client";
 
-// Interactive boundary map. By default it draws only our own boundary layers on a plain
-// background, so it needs no tile service, API key or internet connection. Set
-// NEXT_PUBLIC_BASEMAP_STYLE_URL to a MapLibre style URL to add a basemap underneath.
+// Interactive map. By default it draws only our own layers on a plain background, so it needs
+// no tile service, API key or internet connection. Set NEXT_PUBLIC_BASEMAP_STYLE_URL to a
+// MapLibre style URL to add a basemap underneath.
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { GeoJSONSource, Map as MlMap, Popup, StyleSpecification } from "maplibre-gl";
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MlMap,
+  MapGeoJSONFeature,
+  Popup,
+  StyleSpecification,
+} from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
 import type { FeatureCollection } from "@/lib/api";
+import { NO_DATA } from "@/lib/sectors";
 
 const BASEMAP_URL = process.env.NEXT_PUBLIC_BASEMAP_STYLE_URL;
 
 const PLAIN_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
-  layers: [{ id: "bg", type: "background", paint: { "background-color": "#eef2f1" } }],
+  layers: [{ id: "bg", type: "background", paint: { "background-color": "#f3efea" } }],
 };
 
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
-interface Props {
-  context: FeatureCollection | null; // outline of the selected area
-  subAreas: FeatureCollection | null; // its sub-areas, clickable
-  bbox: [number, number, number, number] | null;
-  onSelect: (id: number) => void;
+export interface Choropleth {
+  values: Map<number, number>;
+  stops: number[]; // strictly increasing thresholds
+  colors: string[]; // stops.length + 1 colours
+  format: (v: number) => string;
 }
 
-export default function AreaMap({ context, subAreas, bbox, onSelect }: Props) {
+export interface PointLayer {
+  data: GeoJSON.FeatureCollection;
+  attribution: string[];
+}
+
+interface Props {
+  context: FeatureCollection | null;
+  subAreas: FeatureCollection | null;
+  bbox: [number, number, number, number] | null;
+  choropleth: Choropleth | null;
+  facilities: PointLayer | null;
+  settlements: PointLayer | null;
+  onSelect: (id: number) => void;
+  onSelectPoint?: (layer: "facilities" | "settlements", id: number) => void;
+}
+
+function fillExpression(stops: number[], colors: string[]): ExpressionSpecification {
+  const step: unknown[] = ["step", ["feature-state", "value"], colors[0]];
+  stops.forEach((b, i) => step.push(b, colors[i + 1]));
+  return [
+    "case",
+    ["==", ["feature-state", "value"], null],
+    NO_DATA,
+    step,
+  ] as unknown as ExpressionSpecification;
+}
+
+export default function AreaMap(props: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
   const ready = useRef(false);
-  const latest = useRef({ context, subAreas, bbox });
-  const onSelectRef = useRef(onSelect);
-  useEffect(() => {
-    onSelectRef.current = onSelect;
-  }, [onSelect]);
+  const latest = useRef(props);
+  const appliedIds = useRef<number[]>([]);
+  const lastBbox = useRef<string | null>(null);
 
   function draw() {
     const m = map.current;
     if (!m) return;
-    const { context, subAreas, bbox } = latest.current;
+    const { context, subAreas, bbox, choropleth, facilities, settlements } = latest.current;
     (m.getSource("context") as GeoJSONSource | undefined)?.setData(context ?? EMPTY);
     (m.getSource("children") as GeoJSONSource | undefined)?.setData(subAreas ?? EMPTY);
-    if (bbox) {
+    (m.getSource("facilities") as GeoJSONSource | undefined)?.setData(facilities?.data ?? EMPTY);
+    (m.getSource("settlements") as GeoJSONSource | undefined)?.setData(settlements?.data ?? EMPTY);
+
+    for (const id of appliedIds.current) m.removeFeatureState({ source: "children", id }, "value");
+    appliedIds.current = [];
+    if (choropleth && subAreas) {
+      for (const f of subAreas.features) {
+        const id = (f.properties?.id ?? f.id) as number;
+        const v = choropleth.values.get(id);
+        m.setFeatureState({ source: "children", id }, { value: v ?? null });
+        appliedIds.current.push(id);
+      }
+      m.setPaintProperty("children-fill", "fill-color", fillExpression(choropleth.stops, choropleth.colors));
+      m.setPaintProperty("children-fill", "fill-opacity", [
+        "case",
+        ["boolean", ["feature-state", "hover"], false],
+        0.95,
+        0.8,
+      ]);
+    } else {
+      m.setPaintProperty("children-fill", "fill-color", "#6b1420");
+      m.setPaintProperty("children-fill", "fill-opacity", [
+        "case",
+        ["boolean", ["feature-state", "hover"], false],
+        0.25,
+        0.06,
+      ]);
+    }
+    const key = bbox?.join(",") ?? null;
+    if (bbox && key !== lastBbox.current) {
+      lastBbox.current = key;
       m.fitBounds(
         [
           [bbox[0], bbox[1]],
@@ -55,7 +118,6 @@ export default function AreaMap({ context, subAreas, bbox, onSelect }: Props) {
     }
   }
 
-  // Create the map once.
   useEffect(() => {
     let cancelled = false;
     let popup: Popup | null = null;
@@ -73,6 +135,7 @@ export default function AreaMap({ context, subAreas, bbox, onSelect }: Props) {
         attributionControl: { compact: true },
       });
       m.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
+      m.addControl(new ml.ScaleControl({ unit: "metric" }), "bottom-left");
       popup = new ml.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
       map.current = m;
 
@@ -84,73 +147,74 @@ export default function AreaMap({ context, subAreas, bbox, onSelect }: Props) {
           promoteId: "id",
           attribution: "Boundaries © GRID3 (CC BY 4.0) via geoBoundaries",
         });
+        m.addSource("facilities", { type: "geojson", data: EMPTY });
+        m.addSource("settlements", { type: "geojson", data: EMPTY });
+        m.addLayer({ id: "children-fill", type: "fill", source: "children", paint: { "fill-color": "#6b1420", "fill-opacity": 0.06 } });
+        m.addLayer({ id: "children-line", type: "line", source: "children", paint: { "line-color": "#6b1420", "line-width": 0.8, "line-opacity": 0.55 } });
+        m.addLayer({ id: "context-line", type: "line", source: "context", paint: { "line-color": "#1f1517", "line-width": 2 } });
         m.addLayer({
-          id: "children-fill",
-          type: "fill",
-          source: "children",
-          paint: {
-            "fill-color": "#0e6b5c",
-            "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.35, 0.12],
-          },
+          id: "settlements-circle",
+          type: "circle",
+          source: "settlements",
+          paint: { "circle-radius": 3, "circle-color": "#d9a441", "circle-stroke-color": "#7f5a12", "circle-stroke-width": 0.6 },
         });
         m.addLayer({
-          id: "children-line",
-          type: "line",
-          source: "children",
-          paint: { "line-color": "#0e6b5c", "line-width": 1 },
-        });
-        m.addLayer({
-          id: "context-line",
-          type: "line",
-          source: "context",
-          paint: { "line-color": "#13201d", "line-width": 2 },
+          id: "facilities-circle",
+          type: "circle",
+          source: "facilities",
+          paint: { "circle-radius": 4.5, "circle-color": "#6b1420", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.2 },
         });
 
         let hovered: string | number | undefined;
+        const label = (f: MapGeoJSONFeature) => {
+          const name = String(f.properties?.name ?? "");
+          const { choropleth } = latest.current;
+          if (!choropleth || f.id === undefined) return name;
+          const v = choropleth.values.get(f.id as number);
+          return `${name}: ${v === undefined ? "no data" : choropleth.format(v)}`;
+        };
         m.on("mousemove", "children-fill", (e) => {
           const f = e.features?.[0];
           if (!f) return;
-          if (hovered !== undefined) {
-            m.setFeatureState({ source: "children", id: hovered }, { hover: false });
-          }
+          if (hovered !== undefined) m.setFeatureState({ source: "children", id: hovered }, { hover: false });
           hovered = f.id;
-          if (hovered !== undefined) {
-            m.setFeatureState({ source: "children", id: hovered }, { hover: true });
-          }
+          if (hovered !== undefined) m.setFeatureState({ source: "children", id: hovered }, { hover: true });
           m.getCanvas().style.cursor = "pointer";
-          popup?.setLngLat(e.lngLat).setText(String(f.properties?.name ?? "")).addTo(m);
+          popup?.setLngLat(e.lngLat).setText(label(f)).addTo(m);
         });
         m.on("mouseleave", "children-fill", () => {
-          if (hovered !== undefined) {
-            m.setFeatureState({ source: "children", id: hovered }, { hover: false });
-          }
+          if (hovered !== undefined) m.setFeatureState({ source: "children", id: hovered }, { hover: false });
           hovered = undefined;
           m.getCanvas().style.cursor = "";
           popup?.remove();
         });
         m.on("click", "children-fill", (e) => {
+          if (m.queryRenderedFeatures(e.point, { layers: ["facilities-circle", "settlements-circle"] }).length) return;
           popup?.remove();
-          const id = e.features?.[0]?.properties?.id;
-          if (typeof id === "number") onSelectRef.current(id);
+          const id = e.features?.[0]?.id;
+          if (typeof id === "number") latest.current.onSelect(id);
         });
+        for (const layer of ["facilities", "settlements"] as const) {
+          m.on("mouseenter", `${layer}-circle`, (e) => {
+            const p = e.features?.[0]?.properties ?? {};
+            m.getCanvas().style.cursor = "pointer";
+            const text = [p.name || "(unnamed)", p.subtype || p.kind, p.status].filter(Boolean).join(" · ");
+            popup?.setLngLat(e.lngLat).setText(text).addTo(m);
+          });
+          m.on("mouseleave", `${layer}-circle`, () => {
+            m.getCanvas().style.cursor = "";
+            popup?.remove();
+          });
+          m.on("click", `${layer}-circle`, (e) => {
+            const id = e.features?.[0]?.properties?.id;
+            if (typeof id === "number") latest.current.onSelectPoint?.(layer, id);
+          });
+        }
         ready.current = true;
         draw();
       });
 
-      // The side panel changes height as you navigate; keep the canvas and view in step.
-      resizeObserver = new ResizeObserver(() => {
-        m.resize();
-        const { bbox } = latest.current;
-        if (ready.current && bbox) {
-          m.fitBounds(
-            [
-              [bbox[0], bbox[1]],
-              [bbox[2], bbox[3]],
-            ],
-            { padding: 24, duration: 0 },
-          );
-        }
-      });
+      resizeObserver = new ResizeObserver(() => m.resize());
       resizeObserver.observe(el.current);
     })();
     return () => {
@@ -163,11 +227,10 @@ export default function AreaMap({ context, subAreas, bbox, onSelect }: Props) {
     };
   }, []);
 
-  // Keep the latest data; it is drawn as soon as the map is ready, and on every change after.
   useEffect(() => {
-    latest.current = { context, subAreas, bbox };
+    latest.current = props;
     if (ready.current) draw();
-  }, [context, subAreas, bbox]);
+  });
 
-  return <div ref={el} className="h-full min-h-[420px] w-full" aria-label="Boundary map" />;
+  return <div ref={el} className="h-full min-h-[460px] w-full" role="region" aria-label="Map of the selected area" />;
 }

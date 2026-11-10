@@ -150,7 +150,11 @@ def get_area(area_id: int, session: Session = Depends(get_session)):
                     description=f"No {child_level} dataset covering this area is loaded.",
                 )
             )
-    if row["level"] in ("lga", "ward"):
+    has_settlements = row["level"] in ("lga", "ward") and session.scalar(
+        text(f"SELECT EXISTS (SELECT 1 FROM settlement WHERE {row['level']}_id = :id)"),
+        {"id": area_id},
+    )
+    if row["level"] in ("lga", "ward") and not has_settlements:
         gap = (
             session.execute(
                 text(

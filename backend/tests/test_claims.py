@@ -109,6 +109,8 @@ def test_claim_appears_in_profile(ctx):
         .json()
     )
     assert p["claims"][0]["attribute_label"] == "Market days"
+    assert p["claims"][0]["created_by"] == "Author"
+    assert p["claims"][0]["created_by_id"] == ctx["author"].id
 
 
 @pytest.mark.parametrize(
