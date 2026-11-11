@@ -1,7 +1,8 @@
-"""Language model providers. All optional; the platform works without any.
+"""Language model providers for brief summaries. All optional; the platform works without any.
 
-Only self-hosted, free servers are intended (Ollama, llama.cpp, vLLM, LM Studio). Nothing here
-calls a paid API unless an operator deliberately points `ai_base_url` at one.
+"gemini" uses the Google Gemini API on its free tier only, through connectly.ai.gemini (model
+allow-list, local limits, usage accounting). "ollama" and "openai_compatible" are for free,
+self-hosted servers. The deterministic engines never depend on any of these.
 """
 
 from __future__ import annotations
@@ -83,6 +84,24 @@ class OpenAICompatibleProvider:
             raise ProviderError(f"model server request failed: {e}") from e
 
 
+@dataclass
+class GeminiProvider:
+    model: str
+    name: str = "gemini"
+
+    def complete(self, system: str, user: str) -> str:
+        from sqlalchemy.orm import Session
+
+        from connectly.ai.gemini import GeminiClient, GeminiError
+        from connectly.core.db import get_engine
+
+        with Session(get_engine()) as session, GeminiClient(session) as client:
+            try:
+                return client.text_answer(user, system)
+            except GeminiError as e:
+                raise ProviderError(str(e)) from None
+
+
 def get_provider(settings: Settings | None = None) -> Provider | None:
     s = settings or get_settings()
     kind = s.ai_provider.lower()
@@ -92,4 +111,16 @@ def get_provider(settings: Settings | None = None) -> Provider | None:
         return OllamaProvider(s.ai_base_url, s.ai_model, s.ai_timeout)
     if kind == "openai_compatible":
         return OpenAICompatibleProvider(s.ai_base_url, s.ai_model, s.ai_timeout, s.ai_api_key)
-    raise ProviderError(f"unknown ai_provider {s.ai_provider!r} (none, ollama, openai_compatible)")
+    if kind == "gemini":
+        from connectly.ai.gemini import FREE_TEXT_MODELS
+
+        if not s.gemini_api_key:
+            raise ProviderError("ai_provider is gemini but CONNECTLY_GEMINI_API_KEY is not set")
+        if s.gemini_text_model not in FREE_TEXT_MODELS:
+            raise ProviderError(
+                f"{s.gemini_text_model} is not on the free-tier list ({', '.join(sorted(FREE_TEXT_MODELS))})"
+            )
+        return GeminiProvider(s.gemini_text_model)
+    raise ProviderError(
+        f"unknown ai_provider {s.ai_provider!r} (none, gemini, ollama, openai_compatible)"
+    )

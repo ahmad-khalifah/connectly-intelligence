@@ -47,6 +47,9 @@ services:
       CONNECTLY_AI_PROVIDER: ${CONNECTLY_AI_PROVIDER:-none}
       CONNECTLY_AI_BASE_URL: ${CONNECTLY_AI_BASE_URL:-http://host.docker.internal:11434}
       CONNECTLY_AI_MODEL: ${CONNECTLY_AI_MODEL:-llama3.1:8b}
+      CONNECTLY_GEMINI_API_KEY: ${CONNECTLY_GEMINI_API_KEY:-}
+      CONNECTLY_GEMINI_SEARCH_MODEL: ${CONNECTLY_GEMINI_SEARCH_MODEL:-gemini-2.5-flash}
+      CONNECTLY_GEMINI_TEXT_MODEL: ${CONNECTLY_GEMINI_TEXT_MODEL:-gemini-2.5-flash}
     volumes:
       # Downloads and manual dataset files. Copy a manual download in with:
       #   docker compose cp ./file.geojson api:/data/manual/file.geojson

@@ -32,7 +32,7 @@ def section(b, key):
 
 def test_brief_sections_cite_evidence(brief):
     keys = [s["key"] for s in brief["sections"]]
-    assert keys[:10] == [
+    assert keys[:11] == [
         "profile",
         "infrastructure",
         "gaps",
@@ -40,6 +40,7 @@ def test_brief_sections_cite_evidence(brief):
         "barriers",
         "solutions",
         "opportunities",
+        "research",
         "limitations",
         "confidence",
         "sources",

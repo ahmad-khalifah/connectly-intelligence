@@ -7,6 +7,7 @@ export const NAV = [
   { href: "/", label: "Overview" },
   { href: "/explorer", label: "Explorer" },
   { href: "/intelligence", label: "Intelligence" },
+  { href: "/research", label: "Research" },
   { href: "/needs", label: "Needs" },
   { href: "/matching", label: "Matching" },
   { href: "/market-entry", label: "Market entry" },
@@ -35,13 +36,13 @@ function NavList({ pathname }: { pathname: string | null }) {
               <Link
                 href={n.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative block whitespace-nowrap px-3 py-2.5 transition-colors lg:py-1.5 ${
+                className={`relative block whitespace-nowrap px-3 py-2.5 transition-colors lg:px-2 lg:py-1.5 2xl:px-3 ${
                   active ? "font-medium text-brand" : "text-muted hover:text-ink"
                 }`}
               >
                 {n.label}
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gold lg:-bottom-[13px]" />
+                  <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gold lg:inset-x-2 lg:-bottom-[13px] 2xl:inset-x-3" />
                 )}
               </Link>
             </li>

@@ -14,11 +14,11 @@ recorded as a gap and shown to users. Nothing is invented to fill a page.
 
 | | |
 | --- | --- |
-| Modules | Community intelligence database · explorer with indicator maps · community profiles · community claims with review · technology solutions directory with company self-submission · needs assessment · technology matching (8 criteria) · market entry intelligence · intelligence briefs with optional self-hosted AI · saved reports with PDF export · accounts, roles and audit log |
+| Modules | Community intelligence database · explorer with indicator maps · community profiles · community claims with review · technology solutions directory with company self-submission · needs assessment · technology matching (8 criteria) · market entry intelligence · intelligence briefs with an optional checked AI summary · research intelligence with Gemini (free tier, optional) · saved reports with PDF export · accounts, roles and audit log |
 | Sectors | Healthcare, telecommunications and connectivity, financial services (priority); education, agriculture, clean energy, commerce and SMEs, transport and logistics |
 | Data loaded automatically | Nigeria, 37 states, 774 LGAs, 9,308 wards (GRID3, CC BY 4.0); modelled ward population with 95% intervals; urban classification |
 | Data loaded from local downloads | Health and education facilities, settlements, mobile network sites, OpenStreetMap, NDHS 2023-24, EFInA, NCC. See [docs/data-ingestion.md](docs/data-ingestion.md). |
-| Cost | $0. Free, open-source software and openly licensed data only. No paid APIs, map services or hosting. |
+| Cost | $0. Free, open-source software and openly licensed data only. No paid APIs, map services or hosting. The optional Gemini research service uses Google's free tier only and refuses paid-only models. |
 
 ## Contents
 
@@ -156,8 +156,12 @@ the container, use
 | `CONNECTLY_CORS_ORIGINS` | `http://localhost:3000` | Browser origins allowed to call the API directly |
 | `CONNECTLY_DATA_DIR` | `<repo>/data` | Downloaded and manual dataset files |
 | `CONNECTLY_DOWNLOAD_TIMEOUT` | `300` | Download timeout, in seconds |
-| `CONNECTLY_AI_PROVIDER` | `none` | `none`, `ollama` or `openai_compatible` (self-hosted only; see [docs/ai.md](docs/ai.md)) |
-| `CONNECTLY_AI_BASE_URL` / `CONNECTLY_AI_MODEL` / `CONNECTLY_AI_API_KEY` | `http://localhost:11434` / `llama3.1:8b` / none | Model server |
+| `CONNECTLY_AI_PROVIDER` | `none` | Brief summaries: `none`, `gemini` (free tier), `ollama` or `openai_compatible` (self-hosted); see [docs/ai.md](docs/ai.md) |
+| `CONNECTLY_AI_BASE_URL` / `CONNECTLY_AI_MODEL` / `CONNECTLY_AI_API_KEY` | `http://localhost:11434` / `llama3.1:8b` / none | Self-hosted model server |
+| `CONNECTLY_GEMINI_API_KEY` | none | Turns on research intelligence ([docs/research.md](docs/research.md)). Use a key from a Google Cloud project with no billing account |
+| `CONNECTLY_GEMINI_SEARCH_MODEL` / `CONNECTLY_GEMINI_TEXT_MODEL` | `gemini-2.5-flash` / `gemini-2.5-flash` | Must be on the free-tier allow-list in `connectly/ai/gemini.py`; other models are refused |
+| `CONNECTLY_GEMINI_DAILY_SEARCH_LIMIT` / `CONNECTLY_GEMINI_DAILY_REQUEST_LIMIT` / `CONNECTLY_GEMINI_PER_MINUTE_LIMIT` | `200` / `200` / `5` | Connectly's own limits, below Google's free-tier limits |
+| `CONNECTLY_GEMINI_CACHE_DAYS` | `30` | How long a source extraction is reused before Gemini is asked again |
 
 ### Web app (`frontend/.env.local`, or the `web` service)
 
@@ -171,7 +175,7 @@ the container, use
 ### Docker Compose (`.env` in the repository root)
 
 The variables are `CONNECTLY_SECRET_KEY`, `POSTGRES_PASSWORD`, `COOKIE_SECURE`,
-`TRUSTED_PROXY_HOPS`, `CONNECTLY_AI_PROVIDER`, `WEB_PORT` (default 3000) and `DB_PORT`
+`TRUSTED_PROXY_HOPS`, `CONNECTLY_AI_PROVIDER`, `CONNECTLY_GEMINI_API_KEY`, `WEB_PORT` (default 3000) and `DB_PORT`
 (default 5432).
 
 ## Commands
@@ -193,7 +197,7 @@ The variables are `CONNECTLY_SECRET_KEY`, `POSTGRES_PASSWORD`, `COOKIE_SECURE`,
 ## Tests
 
 ```bash
-cd backend && pytest -q && ruff check .        # 163 tests, against connectly_test
+cd backend && pytest -q && ruff check .        # 186 tests, against connectly_test
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
@@ -208,18 +212,21 @@ boundaries and runs the browser tests against it.
 backend/
   connectly/
     api/          FastAPI app; routers for geography, community, claims, directory, needs,
-                  matching, market entry, intelligence, reports, auth, audit
-    ai/           evidence retrieval, briefs, optional model providers and answer checks
+                  matching, market entry, intelligence, research, reports, auth, audit
+    ai/           evidence retrieval, briefs, optional model providers and answer checks;
+                  gemini.py is the free-tier Gemini client (allow-list, limits, accounting)
+    research/     research intelligence: safe source fetching, live research, extraction
+                  with quote checks, findings and review
     core/         settings, database, security
     ingest/       dataset pipelines; manifests/ has one YAML per dataset (source, licence, fields)
     models/       SQLAlchemy models
     reports/      PDF rendering (with the official logo)
     services/     profiles, needs assessment, matching, market entry, directory, audit
-    taxonomy/     sectors, needs, indicators, data gaps, need models
-  alembic/        migrations 0001–0005
+    taxonomy/     sectors, needs, indicators, data gaps, need models, geopolitical zones
+  alembic/        migrations 0001–0006
   tests/          unit, API and real-data tests
 frontend/
-  src/app/        pages (sign-in, overview, explorer, profiles, intelligence, needs,
+  src/app/        pages (sign-in, overview, explorer, profiles, intelligence, research, needs,
                   matching, market entry, directory, reports, admin) and the API proxy
   src/components/ UI components; public/brand/ holds the official logo files (do not edit)
   e2e/, tests/    browser tests and unit tests
@@ -233,7 +240,9 @@ docs/             methods, data ingestion, directory, AI, security, deployment, 
 - [Data ingestion](docs/data-ingestion.md): every dataset, its source, licence and load command
 - [Methods](docs/methodology.md): value types, gap scores, matching, market entry
 - [Directory](docs/directory.md): fields, review workflow, import format
-- [AI layer](docs/ai.md): retrieval, the checks on model output, Ollama set-up
+- [AI layer](docs/ai.md): retrieval, the checks on model output, Ollama and Gemini set-up
+- [Research intelligence](docs/research.md): Gemini free tier, Google Search grounding, source
+  analysis, findings, limits and Google's terms
 - [Security review](docs/security.md)
 - [Deployment](docs/deployment.md)
 - [Brand assets](docs/brand/README.md)

@@ -20,7 +20,7 @@ interface Entry {
   ip: string | null;
 }
 
-const TYPES = ["", "user", "claim", "organisation", "solution", "dataset", "report"];
+const TYPES = ["", "user", "claim", "organisation", "solution", "dataset", "report", "research_source", "research_finding"];
 
 export default function AuditPage({ searchParams }: PageProps<"/admin/audit">) {
   return (

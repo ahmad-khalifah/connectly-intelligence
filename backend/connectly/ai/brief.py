@@ -2,7 +2,9 @@
 
 1. Retrieve: gather numbered evidence items (E1, E2...) for an area and sector from the
    database: profile values, facilities, gap scores, matched solutions, community claims,
-   data gaps and, for a question, a full-text search over claims, gaps and the directory.
+   data gaps, research findings extracted from sources researchers submitted (each with a
+   verbatim quote checked against the source) and, for a question, a full-text search over
+   claims, gaps and the directory.
 2. Brief: build the brief's ten sections deterministically from that evidence. Every
    statement cites evidence ids and is tagged fact, derived, recommendation or gap.
 3. Narrative (optional): if a self-hosted model is configured, ask it to summarise the
@@ -22,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from connectly.ai.providers import Provider, ProviderError, get_provider
 from connectly.models.directory import BENEFICIARY_GROUPS
+from connectly.research.service import list_findings
 from connectly.services.matching import MatchingError, match
 from connectly.services.needs import assess
 from connectly.services.profiles import area_profile
@@ -44,6 +47,10 @@ BARRIERS = {
     "connectivity.nearest_tower_km_ward_point": (10, False, "distance to the nearest mobile site"),
     "finance.financially_excluded_adults_pct": (30, False, "financial exclusion"),
 }
+
+
+# What a source presents → the platform's value types. An opinion is not a measurement.
+FINDING_VALUE_TYPE = {"measured": "measured", "estimated": "estimated", "assumed": "assumed"}
 
 
 class BriefError(ValueError):
@@ -141,6 +148,7 @@ def build_brief(session: Session, area_id: int, sector: str, question: str | Non
             "barriers",
             "solutions",
             "opportunities",
+            "research",
             "limitations",
             "confidence",
             "sources",
@@ -370,6 +378,54 @@ def build_brief(session: Session, area_id: int, sector: str, question: str | Non
             _stmt("gap", "No opportunity can be stated without evidence of a gap.", [])
         )
 
+    # Research findings from submitted sources (connectly.research). Disputed and retired
+    # findings are left out; unverified ones are included and labelled as such.
+    findings = [
+        f
+        for f in list_findings(session, area_id=area_id, sector=sector, limit=40)
+        if f["verification_status"] in ("unverified", "source_verified", "field_verified")
+    ][:8]
+    for f in findings:
+        src = f["source"]
+        label = ", ".join(x for x in (src["title"], src["publisher"]) if x) or src["url"]
+        source = (
+            f"{label}. {src['url']}. Published {src['published_on'] or 'date unknown'}; "
+            f"retrieved {src['retrieved_at'][:10]}. Extracted by {f['extracted_by']}; quote checked"
+        )
+        eid = ev.add(
+            "research",
+            f"{f['statement']} Source passage: \u201c{f['quote']}\u201d",
+            source,
+            FINDING_VALUE_TYPE.get(f["kind"], "assumed"),
+            f["verification_status"],
+        )
+        prefix = "" if f["verification_status"] != "unverified" else "Unverified: "
+        where = ", ".join(a["name"] for a in f["areas"]) or "Nigeria"
+        S["research"].append(
+            _stmt(
+                "fact" if f["kind"] in ("measured", "estimated") else "derived",
+                f"{prefix}{f['statement']} ({where}; {f['kind']}"
+                + (f", {f['period']}" if f["period"] else "")
+                + ")",
+                [eid],
+            )
+        )
+    if not findings:
+        S["research"].append(
+            _stmt(
+                "gap", "No research findings from submitted sources cover this area and sector.", []
+            )
+        )
+    elif any(f["verification_status"] == "unverified" for f in findings):
+        S["research"].append(
+            _stmt(
+                "gap",
+                "Unverified findings were extracted by AI from the cited source. The quoted passage "
+                "was matched to the source text, but no person has yet confirmed the finding.",
+                [],
+            )
+        )
+
     # 8. Limitations
     missing = [x["name"] for x in p["missing_indicators"] if x["sector"] == sector]
     if missing:
@@ -405,7 +461,7 @@ def build_brief(session: Session, area_id: int, sector: str, question: str | Non
     sector_facts = [
         e
         for e in ev.items
-        if e["kind"] in ("indicator", "context", "facilities", "claim", "gap_score")
+        if e["kind"] in ("indicator", "context", "facilities", "claim", "gap_score", "research")
     ]
     S["confidence"].append(
         _stmt(
@@ -423,10 +479,13 @@ def build_brief(session: Session, area_id: int, sector: str, question: str | Non
         )
 
     sufficient = any(
-        e["kind"] in ("indicator", "context", "facilities", "gap_score")
-        and e["text"]
-        and not e["text"].startswith("Population")
-        and "classified" not in e["text"]
+        (
+            e["kind"] in ("indicator", "context", "facilities", "gap_score")
+            and e["text"]
+            and not e["text"].startswith("Population")
+            and "classified" not in e["text"]
+        )
+        or (e["kind"] == "research" and e["verification"] in ("source_verified", "field_verified"))
         for e in ev.items
     )
     return {

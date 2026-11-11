@@ -23,9 +23,21 @@ from connectly.models.evidence import DataGap, Indicator, Observation
 from connectly.models.geography import AdminArea, PlaceAlias
 from connectly.models.provenance import Dataset, IngestRun, Source
 from connectly.models.reports import REPORT_KINDS, Report
+from connectly.models.research import (
+    AICache,
+    AIUsage,
+    ResearchFinding,
+    ResearchFindingArea,
+    ResearchSource,
+)
 from connectly.models.sectors import NeedCategory, Sector
 
 __all__ = [
+    "AICache",
+    "AIUsage",
+    "ResearchFinding",
+    "ResearchFindingArea",
+    "ResearchSource",
     "REPORT_KINDS",
     "Report",
     "Organisation",

@@ -5,7 +5,10 @@
 The 11 November clean-machine re-verification and the two map fixes it led to are recorded in
 [milestones/verification-2026-11-11.md](milestones/verification-2026-11-11.md). The nationwide
 coverage changes made the same day are recorded in
-[milestones/nationwide-coverage.md](milestones/nationwide-coverage.md).
+[milestones/nationwide-coverage.md](milestones/nationwide-coverage.md). The Gemini research
+intelligence service added the same day is recorded in
+[milestones/research-intelligence.md](milestones/research-intelligence.md) and documented in
+[research.md](research.md).
 
 ## 1. Summary
 
@@ -34,26 +37,27 @@ data" rather than producing numbers. That is the intended behaviour.
 | Sectors (all 8; 3 priority) | Stored as data (new sectors are rows, not code), with need categories, indicator definitions and recorded data gaps |
 | A. Community Intelligence Database (18 fields) | Boundaries for country, state, LGA and ward; settlements and facilities (point-in-polygon linked); observations with source, period, interval, value type and verification; community claims with a review workflow; profile pages covering every field, with missing data listed |
 | B. Technology Solutions Database (20 fields) | Organisations and solutions with structured requirements (internet, device, power, literacy, languages, channels, accessibility, partnerships), coverage by state, LGA or ward (operating or expansion interest), pricing, sources and verification; admin entry, company self-submission with review, YAML import |
-| 4. Community intelligence engine | Intelligence briefs for any area and sector. They have ten sections built from retrieved evidence, every statement is cited and tagged fact, derived, recommendation or gap, and confidence and limitations are stated. |
+| 4. Community intelligence engine | Intelligence briefs for any area and sector. They have eleven sections built from retrieved evidence, including research findings from submitted sources; every statement is cited and tagged fact, derived, recommendation or gap, and confidence and limitations are stated. |
 | 5. Matching engine (8 criteria) | Relevance, suitability, availability, affordability, internet and device, language, distribution and feasibility, each with reason and evidence. Unknown criteria lower confidence instead of passing or failing. No matching on sector alone. |
 | 6. Market entry (12 outputs) | Candidate areas ranked by gap, fit, reach and competition (no score without evidence of need). The twelve outputs are tagged. Demand, partnerships and costs are never estimated. |
 | 7. Mapping | MapLibre explorer from country to ward; choropleths by any indicator with values at that level; sector filter; facility and settlement layers; works offline without a tile service |
 | 8. Data sources | Manifest per dataset (source, version, licence and its evidence, limitations, checksum); ingestion audit; Data sources page; `docs/data-ingestion.md` |
-| 9. AI architecture | Separate components for data management, geographic analysis, processing, segmentation (needs assessment), matching, scoring, evidence retrieval and reasoning. An optional self-hosted model (Ollama or any OpenAI-compatible server) only summarises cited evidence; replies with an uncited sentence, an unknown evidence id or an invented number are rejected. |
-| Interface | Dashboard of live counts, explorer, profiles, intelligence, needs, matching, market entry, directory, reports with branded PDF export, administration (users, audit, review queue, dataset loads) |
+| 9. AI architecture | Separate components for data management, geographic analysis, processing, segmentation (needs assessment), matching, scoring, evidence retrieval and reasoning. An optional self-hosted model (Ollama or any OpenAI-compatible server) only summarises cited evidence; replies with an uncited sentence, an unknown evidence id or an invented number are rejected. Gemini (free tier only) can be the summary model too. |
+| Research intelligence (Gemini, optional) | Live web research with Google Search grounding, shown only to the user and not stored (Google's terms); analysis of sources researchers submit, with verbatim quotes checked against the fetched source before a finding is stored; review workflow; findings cited in briefs and PDFs; free-tier model allow-list, local limits, 429 handling, usage accounting and caching. See `docs/research.md`. |
+| Interface | Dashboard of live counts, explorer, profiles, intelligence, research, needs, matching, market entry, directory, reports with branded PDF export, administration (users, audit, AI usage, review queue, dataset loads) |
 | Security | Four roles; Argon2id; revocable sessions; lockout and rate limits; httpOnly cookie through a same-origin proxy; CSRF origin checks; security headers; audit log; personal-data guard. See `docs/security.md`. |
 | Brand | The official logo, converted from the supplied PDF without changes, is used in the navigation, sign-in page, loading screens, browser icon, footer and PDF reports. Maroon and gold come from the logo; Poppins and Inter are self-hosted. See `docs/brand/README.md`. |
 
-Migrations: `0001` to `0005`, applied and checked for drift. Milestone reports:
+Migrations: `0001` to `0006`, applied and checked for drift. Milestone reports:
 `docs/milestones/`.
 
 ## 3. What is tested
 
 | Check | Result |
 | --- | --- |
-| Backend tests (`pytest`), including six checks against the real loaded data | 163 passed (152 at first delivery; 11 added on 11 November) |
+| Backend tests (`pytest`), including six checks against the real loaded data | 186 passed (152 at first delivery; 34 added on 11 November, 23 of them for research intelligence) |
 | Frontend unit tests | 3 passed |
-| Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, market entry, admin, sign-out, mobile | 8 passed locally and 8 passed in CI against Docker |
+| Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, research (unconfigured), market entry, admin and AI usage, sign-out, mobile | 8 passed locally |
 | Lint and format (ruff, ESLint), type check, production build | Pass |
 | Dependency audits (`pip-audit`, `npm audit --omit=dev`) | No known vulnerabilities |
 | Docker stack (CI job `stack`, run 42867637285) | Images built, three containers healthy, API not exposed, bootstrap loaded 1 + 37 + 774 + 9,308 boundaries, browser tests passed |
@@ -66,7 +70,7 @@ screenshots reviewed. Temporary records created for those checks were deleted af
 | # | Requirement | Status |
 | --- | --- | --- |
 | 1 | All modules implemented | Done (section 2) |
-| 2 | Migrations complete | Done: `0001`–`0005`; `alembic check` clean |
+| 2 | Migrations complete | Done: `0001`–`0006`; `alembic check` clean |
 | 3 | Ingestion documented | Done: `docs/data-ingestion.md` |
 | 4 | All available datasets integrated and validated | Every dataset reachable from the build environment is loaded and validated. The rest have tested loaders, manifests and exact instructions (section 6). |
 | 5 | All tests pass | Done (section 3) |
@@ -99,10 +103,16 @@ screenshots reviewed. Temporary records created for those checks were deleted af
    attribution on the GRID3 or WorldPop page, then mark the dataset verified.
 5. **AI summaries with Ollama.** The checking logic is tested with a stand-in model, but no
    live model was run here (`docs/ai.md`).
-6. **Directory content.** Add real organisations and solutions from their own sources, or
+6. **Gemini research.** Create a key in Google AI Studio in a Google Cloud project with no
+   billing account, set `CONNECTLY_GEMINI_API_KEY`, then run one live question and one source
+   analysis and check Administration → AI usage. The Gemini API could not be reached from the
+   build workspace; all calls were tested against a stand-in using Google's documented format.
+   Re-read Google's current Gemini API Additional Terms, which could not be fetched here
+   (`docs/research.md`).
+7. **Directory content.** Add real organisations and solutions from their own sources, or
    invite companies to submit them. Matching and market entry become useful as records are
    added.
-7. **HTTPS deployment**, with a reverse proxy and secure cookies (`docs/deployment.md`).
+8. **HTTPS deployment**, with a reverse proxy and secure cookies (`docs/deployment.md`).
 
 ## 6. Data limitations
 

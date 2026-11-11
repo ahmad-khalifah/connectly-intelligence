@@ -40,12 +40,13 @@ async function Body() {
   const links = [
     { href: "/admin/users", title: "Users", text: "Accounts, roles and temporary passwords" },
     { href: "/admin/audit", title: "Audit log", text: "Every sign-in and change" },
+    { href: "/admin/ai-usage", title: "AI usage", text: "Gemini requests, tokens, limits and errors" },
     { href: "/directory?status=submitted", title: "Directory review", text: `${stats.solutions_awaiting_review ?? 0} solutions awaiting review` },
     { href: "/data", title: "Datasets and gaps", text: `${stats.datasets_loaded} loaded, ${stats.open_data_gaps} open gaps` },
   ];
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {links.map((l) => (
           <Link key={l.href} href={l.href} className="rounded-lg border border-line bg-panel p-4 hover:border-brand/40">
             <div className="font-semibold text-brand">{l.title}</div>

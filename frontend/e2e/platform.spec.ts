@@ -135,6 +135,11 @@ test.describe("signed in", () => {
     await page.locator("form:has(#i-sector) select[data-level=state]").selectOption({ label: "Adamawa" });
     await page.getByRole("button", { name: "Build brief" }).click();
     await expect(page.getByText(/Evidence \(\d+\)/)).toBeVisible();
+    await expect(page.getByText("No research findings from submitted sources cover this area and sector.")).toBeVisible();
+    // Research needs a Gemini key; without one the page says so and nothing is called.
+    await page.goto("/research");
+    await expect(page.getByText("Research is off")).toBeVisible();
+    await expect(page.getByText(/No findings match/)).toBeVisible();
     await page.goto("/market-entry");
     await page.locator('form:has(#me-sector) label:has-text("Adamawa") input').check();
     await page.getByRole("button", { name: "Analyse" }).click();
@@ -147,6 +152,9 @@ test.describe("signed in", () => {
     await expect(page.getByText("Recent dataset loads")).toBeVisible();
     await page.goto("/admin/audit");
     await expect(page.getByText("login", { exact: true }).first()).toBeVisible();
+    await page.goto("/admin/ai-usage");
+    await expect(page.getByText("Gemini not configured")).toBeVisible();
+    await expect(page.getByText("No requests yet.")).toBeVisible();
     await page.locator("button[aria-haspopup=menu]").click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login/);

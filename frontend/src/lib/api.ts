@@ -191,6 +191,8 @@ export async function errorDetail(res: Response): Promise<string> {
   try {
     const body = await res.json();
     const d = body.detail ?? res.statusText;
+    // Some endpoints return {kind, message}.
+    if (d && typeof d === "object" && !Array.isArray(d) && typeof d.message === "string") return d.message;
     // FastAPI validation errors are a list of {loc, msg}.
     if (Array.isArray(d)) {
       return d
@@ -546,8 +548,107 @@ export const BRIEF_SECTION: Record<string, string> = {
   barriers: "Technology adoption barriers",
   solutions: "Relevant available solutions",
   opportunities: "Implementation opportunities",
+  research: "Research findings from sources",
   limitations: "Data limitations",
   confidence: "Confidence",
   sources: "Supporting sources",
   related: "Related to your question",
+};
+
+// ---------------------------------------------------------------------- research intelligence
+
+export interface ResearchUsage {
+  pacific_day: string;
+  resets_at: string;
+  searches: number;
+  search_limit: number;
+  requests: number;
+  request_limit: number;
+  last_minute: number;
+  per_minute_limit: number;
+  tokens: number;
+  blocked_until: string | null;
+}
+
+export interface ResearchStatus {
+  configured: boolean;
+  provider: string;
+  search_model: string;
+  text_model: string;
+  search_model_allowed: boolean;
+  text_model_allowed: boolean;
+  usage: ResearchUsage;
+  notice: string;
+  message: string | null;
+}
+
+export interface ResearchZone {
+  code: string;
+  name: string;
+  kind: "zone" | "group";
+  state_ids: number[];
+  missing_states: string[];
+}
+
+export interface LiveResearch {
+  question: string;
+  scope: { label: string; state_ids: number[]; states: string[]; missing_states: string[] };
+  sector: string | null;
+  model: string;
+  text: string;
+  supports: { start: number; end: number; text: string; sources: number[] }[];
+  sources: { index: number; title: string | null; uri: string | null }[];
+  queries: string[];
+  search_entry_point_html: string | null;
+  value_type: "ai_generated";
+  verification_status: "unverified";
+  stored: false;
+  notice: string;
+  limitations: string[];
+}
+
+export interface ResearchSource {
+  id: number;
+  url: string;
+  final_url: string | null;
+  title: string | null;
+  publisher: string | null;
+  published_on: string | null;
+  published_basis: string | null;
+  retrieved_at: string;
+}
+
+export type FindingStatus = "unverified" | "source_verified" | "field_verified" | "disputed" | "retired";
+
+export interface ResearchFinding {
+  id: number;
+  statement: string;
+  quote: string;
+  kind: "measured" | "estimated" | "assumed" | "opinion";
+  sector: string | null;
+  period: string | null;
+  places: string[];
+  areas: { id: number; name: string; level: Level }[];
+  extracted_by: string;
+  verification_status: FindingStatus;
+  verification_note: string | null;
+  verified_at: string | null;
+  source: ResearchSource;
+}
+
+export interface SourceAnalysis {
+  source: ResearchSource;
+  findings: ResearchFinding[];
+  rejected: { statement: string; reason: string }[];
+  truncated: boolean;
+  from_cache: boolean;
+  model: string;
+  notice: string;
+}
+
+export const FINDING_KIND: Record<ResearchFinding["kind"], string> = {
+  measured: "Measured (per source)",
+  estimated: "Estimate (per source)",
+  assumed: "Assumption (per source)",
+  opinion: "Opinion or recommendation",
 };

@@ -1,0 +1,29 @@
+# Nigeria's six geopolitical zones, as commonly used by the federal government and survey
+# publishers (e.g. NDHS, NBS). Used to scope research questions; names must match loaded
+# state names or aliases. "Northern Nigeria" is the three northern zones together.
+zones:
+  north_central:
+    name: North Central
+    states: [Benue, Kogi, Kwara, Nasarawa, Niger, Plateau, FCT]
+  north_east:
+    name: North East
+    states: [Adamawa, Bauchi, Borno, Gombe, Taraba, Yobe]
+  north_west:
+    name: North West
+    states: [Jigawa, Kaduna, Kano, Katsina, Kebbi, Sokoto, Zamfara]
+  south_east:
+    name: South East
+    states: [Abia, Anambra, Ebonyi, Enugu, Imo]
+  south_south:
+    name: South South
+    states: [Akwa Ibom, Bayelsa, Cross River, Delta, Edo, Rivers]
+  south_west:
+    name: South West
+    states: [Ekiti, Lagos, Ogun, Ondo, Osun, Oyo]
+groups:
+  northern_nigeria:
+    name: Northern Nigeria
+    zones: [north_central, north_east, north_west]
+  southern_nigeria:
+    name: Southern Nigeria
+    zones: [south_east, south_south, south_west]

@@ -19,6 +19,7 @@ from connectly.api.routers import (
     needs,
     registry,
     reports,
+    research,
 )
 from connectly.core.config import get_settings
 from connectly.core.db import get_engine, make_sessionmaker
@@ -78,6 +79,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.include_router(claims.router)
     app.include_router(audit_log.router)
     app.include_router(directory.router)
+    app.include_router(research.router)
     return app
 
 

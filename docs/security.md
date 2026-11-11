@@ -1,6 +1,6 @@
 # Security review
 
-Review date: 10 November 2026. Scope: the API, the web app, the Docker setup and their
+Review date: 10 November 2026; research intelligence (Gemini) added 11 November 2026. Scope: the API, the web app, the Docker setup and their
 dependencies.
 
 ## Controls in place
@@ -17,10 +17,12 @@ dependencies.
 | Backend proxy | Forwards only `/api/v1/…`, never the routes that return tokens; rejects path traversal | `frontend/src/app/api/backend/[...path]/route.ts` |
 | Open redirects | The post-sign-in destination must be a same-site path | `safeNext` (unit-tested) |
 | SQL injection | All values are bound parameters. The few interpolated identifiers come from code constants or validated enums (reviewed with a search of every f-string SQL statement). | services, routers |
-| XSS | React escapes output and there is no `dangerouslySetInnerHTML`. PDF text is XML-escaped. | |
+| XSS | React escapes output and there is no `dangerouslySetInnerHTML`. PDF text is XML-escaped. Google's Search Suggestions HTML (required by Google's terms) is shown only inside an `<iframe sandbox>` with `srcdoc`, without `allow-scripts` or `allow-same-origin`, so it cannot run script or read the page. | `components/research/Research.tsx` |
+| Server-side requests (SSRF) | Research source fetching accepts only http(s) URLs to public addresses. Literal and resolved IP addresses that are private, loopback, link-local (including cloud metadata), reserved or multicast are refused, and every redirect hop is checked again. 8 MB and 30 s limits; HTML, text and PDF only. | `research/fetch.py` |
+| Gemini key and spend | Key from an environment variable, sent in a header, removed from stored error messages, never returned to the browser. Only free-tier models on an allow-list are called; local daily and per-minute limits; a Google 429 stops calls until the reset. | `ai/gemini.py`, `docs/research.md` |
 | Headers | API: `nosniff`, `X-Frame-Options: DENY`, `no-referrer`, `no-store`. Web: CSP (`frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`), `nosniff`, `DENY`, referrer and permissions policies. The `X-Powered-By` header is removed. | `api/main.py`, `next.config.ts` |
 | API exposure | The API docs are off in production. In Docker the API port is not published; only the web container can reach it. | `docker-compose.yml` |
-| Personal data | No resident data is modelled. Free text containing a phone number or e-mail address is refused. The audit log never stores passwords. | `services/personal_data.py` |
+| Personal data | No resident data is modelled. Free text containing a phone number or e-mail address is refused, including research questions, focus text, review notes and extracted findings. The audit log never stores passwords. | `services/personal_data.py` |
 | Audit | Append-only log of sign-ins, failed sign-ins and every change, with before and after values and the client address | `services/audit.py` |
 | Containers | Non-root users, minimal base images, health checks | `backend/Dockerfile`, `frontend/Dockerfile` |
 | Dependencies | `pip-audit` and `npm audit --omit=dev` run in CI. Both are clean at review time. | `.github/workflows/ci.yml` |
@@ -40,3 +42,11 @@ dependencies.
   the `ports` entry on a shared server.
 - **HTTPS must be provided by a reverse proxy** (for example Caddy or nginx) when deploying;
   see `docs/deployment.md`.
+- **Gemini free tier and data use.** Google may use free-tier prompts and answers to improve
+  its products, and people may review them. The Research page warns users, and questions with
+  contact details are refused, but other confidential text cannot be detected. Do not use the
+  research service for confidential work.
+- **DNS rebinding.** Source fetching checks the addresses a host name resolves to, then
+  connects; a host that changes its DNS answer between the two could in principle reach a
+  private address. Only researchers and administrators can submit sources. Run the API
+  without access to sensitive internal services, as the Docker setup does.

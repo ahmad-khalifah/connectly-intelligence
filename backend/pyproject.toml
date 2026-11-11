@@ -24,6 +24,7 @@ dependencies = [
     "pyyaml>=6.0",
     "httpx>=0.27",
     "typer>=0.12",
+    "pypdf>=5.0",  # text from PDF reports submitted as research sources
     "pwdlib[argon2]>=0.2",
     "pyjwt>=2.9",
     "email-validator>=2.1",
@@ -46,6 +47,7 @@ include = ["connectly*"]
 [tool.setuptools.package-data]
 "connectly.ingest" = ["manifests/*.yaml", "templates/*.csv"]
 "connectly.reports" = ["assets/*.svg"]
+"connectly.taxonomy" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -65,6 +67,7 @@ ignore = ["B008"]
 [tool.ruff.lint.per-file-ignores]
 # Reference text and SQL strings read better unwrapped.
 "connectly/taxonomy/seed_data.py" = ["E501"]
+"connectly/research/service.py" = ["E501"]  # prompts and SQL read better unwrapped
 "connectly/ingest/derive.py" = ["E501"]
 "tests/**" = ["E501", "F811"]
 "connectly/services/**" = ["E501"]

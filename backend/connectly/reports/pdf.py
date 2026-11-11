@@ -209,6 +209,7 @@ SECTION_TITLES = {
     "barriers": "Technology adoption barriers",
     "solutions": "Relevant available solutions",
     "opportunities": "Implementation opportunities",
+    "research": "Research findings from sources",
     "limitations": "Data limitations",
     "confidence": "Confidence",
     "sources": "Supporting sources",

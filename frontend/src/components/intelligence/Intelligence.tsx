@@ -56,7 +56,7 @@ export function Intelligence({
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" disabled={!ai.enabled} checked={summarise} onChange={(e) => setSummarise(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" />
-            Add an AI summary {ai.enabled ? `(${ai.model}, self-hosted)` : "(no language model configured)"}
+            Add an AI summary {ai.enabled ? `(${ai.model}, ${ai.provider === "gemini" ? "Gemini free tier" : "self-hosted"})` : "(no language model configured)"}
           </label>
           {error && <FormMessage tone="error">{error}</FormMessage>}
           <Button type="submit" busy={busy}>Build brief</Button>
