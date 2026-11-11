@@ -57,7 +57,7 @@ Migrations: `0001` to `0006`, applied and checked for drift. Milestone reports:
 | --- | --- |
 | Backend tests (`pytest`), including six checks against the real loaded data | 186 passed (152 at first delivery; 34 added on 11 November, 23 of them for research intelligence) |
 | Frontend unit tests | 3 passed |
-| Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, research (unconfigured), market entry, admin and AI usage, sign-out, mobile | 8 passed locally |
+| Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, research (unconfigured), market entry, admin and AI usage, sign-out, mobile | 8 passed locally and in CI against Docker (run 42995971519) |
 | Lint and format (ruff, ESLint), type check, production build | Pass |
 | Dependency audits (`pip-audit`, `npm audit --omit=dev`) | No known vulnerabilities |
 | Docker stack (CI job `stack`, run 42867637285) | Images built, three containers healthy, API not exposed, bootstrap loaded 1 + 37 + 774 + 9,308 boundaries, browser tests passed |
