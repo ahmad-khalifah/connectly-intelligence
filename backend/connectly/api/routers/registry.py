@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from connectly.api import schemas
 from connectly.api.deps import get_session
 from connectly.models import ADMIN_LEVELS, DataGap, Dataset, Sector
+from connectly.services.coverage import national_coverage
 
 router = APIRouter(prefix="/api/v1", tags=["registry"])
 
@@ -125,37 +126,10 @@ def list_gaps(
     ]
 
 
-FOCUS_STATE = "Adamawa"
-
-
-def _focus_state(session: Session) -> dict | None:
-    """Counts for the first implementation state, read from the database."""
-    row = (
-        session.execute(
-            text(
-                """
-                SELECT st.id, st.name,
-                  (SELECT count(*) FROM admin_area l WHERE l.parent_id = st.id AND l.active) AS lgas,
-                  (SELECT count(*) FROM admin_area w JOIN admin_area l ON l.id = w.parent_id
-                     WHERE l.parent_id = st.id AND w.active) AS wards,
-                  (SELECT o.value FROM observation o JOIN indicator i ON i.id = o.indicator_id
-                     WHERE i.code = 'population.modelled_total' AND o.geo_level = 'state'
-                       AND o.geo_id = st.id ORDER BY o.period DESC LIMIT 1) AS population,
-                  (SELECT count(*) FROM facility f WHERE f.state_id = st.id) AS facilities,
-                  (SELECT count(*) FROM settlement x WHERE x.state_id = st.id) AS settlements,
-                  (SELECT count(*) FROM claim c WHERE c.is_active AND c.subject_type = 'admin_area'
-                     AND c.subject_id IN (SELECT id FROM admin_area WHERE id = st.id
-                       OR parent_id = st.id OR parent_id IN (SELECT id FROM admin_area
-                       WHERE parent_id = st.id))) AS claims
-                FROM admin_area st WHERE st.level = 'state' AND st.name = :n AND st.active
-                """
-            ),
-            {"n": FOCUS_STATE},
-        )
-        .mappings()
-        .first()
-    )
-    return dict(row) if row else None
+@router.get("/coverage")
+def coverage(session: Session = Depends(get_session)) -> dict:
+    """Which evidence exists in each of the 36 states and the FCT, and from which dataset."""
+    return national_coverage(session)
 
 
 @router.get("/stats", response_model=schemas.Stats)
@@ -200,6 +174,5 @@ def stats(session: Session = Depends(get_session)):
                 )
             ).all()
         ),
-        focus_state=_focus_state(session),
         generated_at=datetime.now(tz=UTC),
     )

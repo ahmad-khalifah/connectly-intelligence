@@ -1,6 +1,7 @@
 # OpenCelliD cell records for Nigeria (MCC 621), collapsed to distinct cell sites.
 key: opencellid-nga
 kind: facilities
+priority: 10
 source:
   key: opencellid
   name: OpenCelliD (Unwired Labs)
@@ -30,7 +31,8 @@ download:
     Register free at opencellid.org, copy your access token, then download Nigeria's file:
     https://opencellid.org/ocid/downloads?token=YOUR_TOKEN&type=mcc&file=621.csv.gz
     Save it as data/manual/621.csv.gz, then run:
-    connectly ingest load opencellid-nga --file data/manual/621.csv.gz --within-state Adamawa
+    connectly ingest load opencellid-nga --file data/manual/621.csv.gz
+    Load the national file; add --within-state NAME only to test with one state first.
 points:
   target: facility
   facility_kind: telecom

@@ -1,6 +1,8 @@
 # GRID3 NGA Settlement Extents v4.1 (August 2026): built-up area polygons.
 key: grid3-nga-settlement-extents
 kind: settlements
+# Extents v4.1 (2026) are preferred over the 2020 settlement names.
+priority: 10
 source:
   key: grid3
   name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
@@ -21,8 +23,9 @@ download:
   mode: manual
   instructions: >-
     On data.grid3.org open "GRID3 NGA - Settlement Extents v4.1", download a GeoPackage or
-    GeoJSON for Adamawa (or national), save under data/manual/, then run:
-    connectly ingest load grid3-nga-settlement-extents --file data/manual/<file> --within-state Adamawa
+    national GeoJSON, save under data/manual/, then run:
+    connectly ingest load grid3-nga-settlement-extents --file data/manual/<file>
+    Load the national file; add --within-state NAME only to test with one state first.
 points:
   target: settlement
 fields:

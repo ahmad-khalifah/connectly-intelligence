@@ -3,7 +3,9 @@
 10 November 2026, re-verified 11 November 2026 · repository `ahmad-khalifah/connectly-intelligence`, branch `main`
 
 The 11 November clean-machine re-verification and the two map fixes it led to are recorded in
-[milestones/verification-2026-11-11.md](milestones/verification-2026-11-11.md).
+[milestones/verification-2026-11-11.md](milestones/verification-2026-11-11.md). The nationwide
+coverage changes made the same day are recorded in
+[milestones/nationwide-coverage.md](milestones/nationwide-coverage.md).
 
 ## 1. Summary
 
@@ -49,7 +51,7 @@ Migrations: `0001` to `0005`, applied and checked for drift. Milestone reports:
 
 | Check | Result |
 | --- | --- |
-| Backend tests (`pytest`), including six checks against the real loaded data | 155 passed (152 at first delivery; 3 map tests added on 11 November) |
+| Backend tests (`pytest`), including six checks against the real loaded data | 163 passed (152 at first delivery; 11 added on 11 November) |
 | Frontend unit tests | 3 passed |
 | Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, market entry, admin, sign-out, mobile | 8 passed locally and 8 passed in CI against Docker |
 | Lint and format (ruff, ESLint), type check, production build | Pass |
@@ -78,8 +80,9 @@ screenshots reviewed. Temporary records created for those checks were deleted af
 
 1. **Clone and run** the Docker quick start, then the checklist in `docs/deployment.md`,
    section 1.
-2. **Download and load the external datasets**, in this priority order for Adamawa:
-   - GRID3 health facilities;
+2. **Download and load the external datasets** as national files, in this priority order (see
+   [data-ingestion.md](data-ingestion.md); `--within-state` is only for trying a file on one state):
+   - GRID3 health facilities v3.0 (24 states) and v2.0 (all other states);
    - OpenStreetMap (one command);
    - OpenCelliD (needs a free token);
    - GRID3 settlements;

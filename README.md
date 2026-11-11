@@ -3,8 +3,10 @@
 Community intelligence and technology-matching platform for Nigeria, by Connectly
 Technologies. It helps technology providers, development organisations and researchers find
 underserved communities, understand their needs from evidence, and match them with suitable
-solutions. Adamawa is the first implementation state, and the platform is built for
-nationwide coverage.
+solutions. It covers all 36 states and the FCT, every LGA and ward, and settlements wherever
+reliable data exists. Adamawa was the first state used to validate the pipelines; nothing in
+the application is limited to it. Where a dataset covers only some states, the dashboard's
+coverage table shows which, and other states get "no data", never zero.
 
 **Ground rule:** every value carries its source, period, licence, value type (measured,
 modelled, derived, estimated, assumed, AI-generated) and verification status. Missing data is
@@ -129,7 +131,7 @@ it. For example, for the OpenStreetMap extract for Nigeria (ODbL):
 
 ```bash
 connectly ingest fetch osm-nga-geofabrik
-connectly ingest load osm-nga-geofabrik --within-state Adamawa
+connectly ingest load osm-nga-geofabrik
 connectly derive
 ```
 
@@ -191,7 +193,7 @@ The variables are `CONNECTLY_SECRET_KEY`, `POSTGRES_PASSWORD`, `COOKIE_SECURE`,
 ## Tests
 
 ```bash
-cd backend && pytest -q && ruff check .        # 155 tests, against connectly_test
+cd backend && pytest -q && ruff check .        # 163 tests, against connectly_test
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 

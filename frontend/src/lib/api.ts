@@ -143,16 +143,6 @@ export interface Stats {
   solutions_awaiting_review?: number;
   reports?: number;
   observations_by_sector?: Record<string, number>;
-  focus_state?: {
-    id: number;
-    name: string;
-    lgas: number;
-    wards: number;
-    population: number | null;
-    facilities: number;
-    settlements: number;
-    claims: number;
-  } | null;
   datasets_loaded: number;
   datasets_registered: number;
   sectors: number;
@@ -160,6 +150,26 @@ export interface Stats {
   observations: number;
   open_data_gaps: number;
   generated_at: string;
+}
+
+export interface CoverageCell {
+  covered: boolean;
+  partial?: boolean;
+  records: number;
+  source: string | null;
+}
+
+export interface CoverageLayer {
+  code: string;
+  label: string;
+  count_meaning: string;
+  states_covered: number;
+}
+
+export interface NationalCoverage {
+  states_total: number;
+  layers: CoverageLayer[];
+  states: { id: number; name: string; lgas: number; wards: number; layers: Record<string, CoverageCell> }[];
 }
 
 export interface FeatureCollection {

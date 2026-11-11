@@ -1,5 +1,7 @@
 key: grid3-nga-education-facilities
 kind: facilities
+# GRID3 is preferred over OpenStreetMap where both list schools in a state.
+priority: 10
 source:
   key: grid3
   name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
@@ -20,7 +22,8 @@ download:
   mode: manual
   instructions: >-
     Download the GeoJSON or CSV resource from the HDX page, save under data/manual/, then:
-    connectly ingest load grid3-nga-education-facilities --file data/manual/<file> --within-state Adamawa
+    connectly ingest load grid3-nga-education-facilities --file data/manual/<file>
+    Load the national file; add --within-state NAME only to test with one state first.
 points:
   target: facility
   facility_kind: education

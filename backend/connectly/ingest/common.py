@@ -259,6 +259,8 @@ def upsert_dataset(
         "manifest": manifest.path.name if manifest.path else None,
         "download_mode": manifest.download.mode,
         "download_instructions": manifest.download.instructions,
+        "priority": manifest.priority,
+        "declared_coverage_states": manifest.coverage_states,
     }
     if retrieved is not None:
         ds.file_name = retrieved.path.name

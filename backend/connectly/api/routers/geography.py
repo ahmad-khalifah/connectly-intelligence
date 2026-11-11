@@ -23,6 +23,7 @@ Level = Literal["country", "state", "lga", "ward"]
 # Default simplification per level, in degrees (~0.001° ≈ 110 m). Detail views can
 # ask for full resolution with tolerance=0.
 DEFAULT_TOLERANCE = {"country": 0.01, "state": 0.003, "lga": 0.001, "ward": 0.0003}
+NATIONAL_TOLERANCE = 0.005  # for LGAs or wards drawn for the whole country
 
 # Recorded data gaps to show when an area has no children loaded yet.
 MISSING_CHILDREN_GAP = {"ward": "geo.wards_not_loaded"}
@@ -295,6 +296,14 @@ def geojson(
     elif level in ("lga", "ward"):
         raise HTTPException(400, f"parent_id or within_id is required for level {level!r}")
     tol = DEFAULT_TOLERANCE[level] if tolerance is None else tolerance
+    if tolerance is None and within_id is not None:
+        # A whole-country map of small areas is drawn at national zoom, where ~0.5 km of
+        # detail is invisible; coarser simplification keeps the payload small.
+        within_level = session.scalar(
+            text("SELECT level FROM admin_area WHERE id = :i"), {"i": within_id}
+        )
+        if within_level == "country":
+            tol = max(tol, NATIONAL_TOLERANCE)
     return schemas.FeatureCollection(
         features=_features(session, where, params, tol),
         simplified_tolerance_deg=tol,

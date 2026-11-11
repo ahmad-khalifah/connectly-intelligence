@@ -88,6 +88,12 @@ class Manifest:
     # Display-name standardisation, e.g. {"the Federal Republic of Nigeria": "Nigeria"}.
     # The original stays in source_name and is added as an alias.
     rename: dict[str, str] | None = None
+    # States the publisher says the file covers (names or aliases). When absent, a national
+    # load covers only the states where the file actually has records; never "all states".
+    coverage_states: list[str] | None = None
+    # When several datasets of the same facility or settlement kind cover a state, derived
+    # values use the one with the lowest priority number (then the newest publication).
+    priority: int = 100
     # CRS to assume when the file declares none (e.g. TopoJSON, which is lon/lat by spec).
     # The extent check still runs, so a wrong assumption is caught.
     assume_crs: str | None = None

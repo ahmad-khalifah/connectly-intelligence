@@ -145,17 +145,82 @@ def area_shape(session: Session, area_id: int) -> BaseGeometry:
     return shapely.from_wkb(bytes(wkb))
 
 
-def activate_dataset(session: Session, dataset_id: int, level: str) -> None:
-    session.execute(
-        text("UPDATE admin_area SET active = (dataset_id = :ds) WHERE level = :level"),
-        {"ds": dataset_id, "level": level},
+def boundary_coverage(
+    session: Session, manifest: Manifest, dataset_id: int, within_sid: int | None
+) -> tuple[list[int], str]:
+    """States whose areas this boundary dataset provides (see ingest/coverage.py)."""
+    from connectly.ingest.coverage import (
+        METHOD_DECLARED,
+        METHOD_OBSERVED,
+        METHOD_WITHIN,
+        resolve_state_names,
     )
+
+    if within_sid is not None:
+        return [within_sid], METHOD_WITHIN
+    if manifest.coverage_states:
+        return resolve_state_names(session, manifest.coverage_states), METHOD_DECLARED
+    observed = (
+        session.execute(
+            text(
+                """
+            SELECT DISTINCT s.id FROM admin_area a
+            JOIN admin_area s ON s.level = 'state' AND s.active
+             AND ST_Contains(s.geom, ST_PointOnSurface(a.geom))
+            WHERE a.dataset_id = :ds ORDER BY s.id
+            """
+            ),
+            {"ds": dataset_id},
+        )
+        .scalars()
+        .all()
+    )
+    return list(observed), METHOD_OBSERVED
+
+
+def activate_dataset(
+    session: Session, dataset_id: int, level: str, state_ids: list[int] | None = None
+) -> None:
+    """Make a dataset the active source for `level`.
+
+    For LGAs and wards, activation is limited to `state_ids`: a ward file that covers some
+    states replaces wards only there, and every other state keeps the wards it had.
+    Countries and states are always replaced as a whole.
+    """
+    if level in ("country", "state") or state_ids is None:
+        session.execute(
+            text("UPDATE admin_area SET active = (dataset_id = :ds) WHERE level = :level"),
+            {"ds": dataset_id, "level": level},
+        )
+    else:
+        session.execute(
+            text(
+                """
+                WITH placed AS (
+                  SELECT a.id, s.id AS state_id
+                  FROM admin_area a
+                  LEFT JOIN admin_area s ON s.level = 'state' AND s.active
+                   AND ST_Contains(s.geom, ST_PointOnSurface(a.geom))
+                  WHERE a.level = :level
+                )
+                UPDATE admin_area a
+                   SET active = (a.dataset_id = :ds AND p.state_id = ANY(:states))
+                  FROM placed p
+                 WHERE a.id = p.id
+                   AND (a.dataset_id = :ds OR p.state_id = ANY(:states))
+                """
+            ),
+            {"ds": dataset_id, "level": level, "states": state_ids},
+        )
+    # A dataset is superseded only once none of its areas is active anywhere.
     session.execute(
         text(
             """
-            UPDATE dataset SET status = 'superseded'
-            WHERE id <> :ds AND status = 'loaded'
-              AND id IN (SELECT DISTINCT dataset_id FROM admin_area WHERE level = :level)
+            UPDATE dataset d SET status = 'superseded'
+            WHERE d.id <> :ds AND d.status = 'loaded'
+              AND EXISTS (SELECT 1 FROM admin_area a WHERE a.dataset_id = d.id AND a.level = :level)
+              AND NOT EXISTS (SELECT 1 FROM admin_area a
+                              WHERE a.dataset_id = d.id AND a.level = :level AND a.active)
             """
         ),
         {"ds": dataset_id, "level": level},
@@ -306,8 +371,10 @@ def load_boundaries(
     run = start_run(session, ds, params)
 
     within_geom = None
+    within_sid = None
     if within_state:
         state = find_active_area(session, "state", within_state)
+        within_sid = state.id
         within_geom = area_shape(session, state.id)
 
     rows, report = prepare_features(path, manifest, within=within_geom)
@@ -371,11 +438,27 @@ def load_boundaries(
         activate == "auto" and (others_active == 0 or _is_active(session, ds.id, level))
     )
     if should_activate:
-        activate_dataset(session, ds.id, level)
+        covered, method = boundary_coverage(session, manifest, ds.id, within_sid)
+        ds.extra = {**(ds.extra or {}), "coverage_state_ids": covered, "coverage_method": method}
+        activate_dataset(session, ds.id, level, covered)
         assign_parents(session, level)
         child = CHILD_LEVEL.get(level)
         if child:
             assign_parents(session, child)
+        if level in ("lga", "ward"):
+            # Facilities and settlements must point at the areas now active.
+            from connectly.ingest.points import link_to_admin
+
+            for table in ("facility", "settlement"):
+                link_to_admin(session, table)
+            n_states = session.scalar(
+                text("SELECT count(*) FROM admin_area WHERE level = 'state' AND active")
+            )
+            if len(covered) < n_states:
+                report.warnings.append(
+                    f"activated in {len(covered)} of {n_states} states ({method}); "
+                    "other states keep their existing areas"
+                )
         report.warnings.extend(hierarchy_warnings(session, level))
         report.warnings.extend(run_checks(session, manifest, ds.id))
     else:

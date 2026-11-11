@@ -35,6 +35,7 @@ from connectly.ingest.common import (
     start_run,
     upsert_dataset,
 )
+from connectly.ingest.coverage import CoverageError, compute_coverage
 from connectly.ingest.fetch import describe_local_file
 from connectly.ingest.manifest import Manifest
 from connectly.ingest.points import FACILITY_UPSERT, link_to_admin
@@ -178,21 +179,15 @@ def load_osm(
             text("DELETE FROM facility WHERE dataset_id = :ds AND NOT (id = ANY(:ids))"),
             {"ds": ds.id, "ids": ids},
         )
-    covered = (
-        session.execute(
-            text(
-                "SELECT id FROM admin_area WHERE level = 'state' AND active"
-                + (" AND id = :sid" if within_state else "")
-            ),
-            {"sid": within_sid} if within_state else {},
-        )
-        .scalars()
-        .all()
-    )
-    ds.extra = {**(ds.extra or {}), "coverage_state_ids": list(covered)}
     unlinked = link_to_admin(session, "facility", ds.id)
     if unlinked:
         report.warnings.append(f"{unlinked} features fall outside every loaded LGA")
+    try:
+        coverage = compute_coverage(session, manifest, ds, "facility", within_sid)
+    except CoverageError as e:
+        raise LoadError(str(e)) from e
+    report.warnings.append(f"coverage: {len(coverage.state_ids)} states ({coverage.method})")
+    report.warnings.extend(coverage.warnings)
     counts = session.execute(
         text("SELECT kind, count(*) FROM facility WHERE dataset_id = :ds GROUP BY kind"),
         {"ds": ds.id},

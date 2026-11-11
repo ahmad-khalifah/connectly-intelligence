@@ -1,14 +1,17 @@
-# GRID3 NGA Health Facilities. Download by hand from the GRID3 Data Hub.
-# v3.0 (August 2026) covers 24 states; v2.0 (November 2024) covers all 37. Adamawa is in both.
-key: grid3-nga-health-facilities
+# GRID3 NGA Health Facilities v3.0 (August 2026). Download by hand from the GRID3 Data Hub.
+key: grid3-nga-health-facilities-v3
 kind: facilities
+# The 24 states listed for v3.0 on grid3.org/geospatial-data-nigeria (checked 10 Nov 2026).
+coverage_states: [Abia, Adamawa, Bauchi, Bayelsa, Borno, Delta, Enugu, FCT, Gombe, Jigawa, Kaduna, Kano, Katsina, Kebbi, Kogi, Kwara, Nasarawa, Niger, Ogun, Osun, Oyo, Sokoto, Yobe, Zamfara]
+priority: 10
+
 source:
   key: grid3
   name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
   url: https://grid3.org/geospatial-data-nigeria
-title: GRID3 NGA - Health Facilities
-version: "v3.0 (Aug 2026) or v2.0 (Nov 2024) — record the version you downloaded here"
-geographic_coverage: Nigeria (v3.0 24 states; v2.0 all states)
+title: "GRID3 NGA - Health Facilities v3.0"
+version: "v3.0 (August 2026)"
+geographic_coverage: Nigeria, 24 states (listed in coverage_states)
 method_summary: Geolocated health facilities compiled by GRID3 with federal and state partners.
 limitations: >-
   Facility existence and type as published; functional status where given. Column names
@@ -22,9 +25,10 @@ landing_url: https://data.grid3.org/search?q=Nigeria%20health%20facilities
 download:
   mode: manual
   instructions: >-
-    On data.grid3.org open "GRID3 NGA - Health Facilities v3.0" (or v2.0 for Taraba and
-    Plateau), choose Download → GeoJSON or CSV, save it under data/manual/, then run:
-    connectly ingest load grid3-nga-health-facilities --file data/manual/<file> --within-state Adamawa
+    On data.grid3.org open "GRID3 NGA - Health Facilities v3.0", choose Download, save the
+    national GeoJSON or CSV under data/manual/, then run:
+    connectly ingest load grid3-nga-health-facilities-v3 --file data/manual/<file>
+    (add --within-state NAME only to test with one state first).
 points:
   target: facility
   facility_kind: health

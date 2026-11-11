@@ -1,8 +1,9 @@
 """Derived indicators: computed from loaded datasets, never typed in.
 
 Each derivation:
-  * uses only facility datasets whose coverage includes the area (a dataset loaded for
-    Adamawa alone never produces "0 clinics" for Kano),
+  * produces values only in states some loaded dataset covers (a dataset loaded for one
+    state never produces "0 clinics" for another), and uses exactly one dataset per state
+    (see ingest/coverage.py), so overlapping sources are never double-counted,
   * writes observations with value_type "derived" into its own derived dataset, which
     lists every input dataset and inherits their licences,
   * replaces its previous output, so re-running is idempotent.
@@ -18,10 +19,20 @@ from datetime import date
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from connectly.ingest.coverage import sources_by_state
 from connectly.ingest.observations import derived_dataset, indicator_id
 from connectly.models import Dataset
 
 POPULATION = "population.modelled_total"
+# Only records from the dataset chosen for their state (ingest/coverage.py).
+FACILITY_SOURCE = (
+    "(f.state_id, f.dataset_id) IN "
+    "(SELECT * FROM unnest(CAST(:fsrc_states AS int[]), CAST(:fsrc_ds AS int[])))"
+)
+SETTLEMENT_SOURCE = (
+    "(s.state_id, s.dataset_id) IN "
+    "(SELECT * FROM unnest(CAST(:ssrc_states AS int[]), CAST(:ssrc_ds AS int[])))"
+)
 # Facilities whose published status says they are not operating are excluded.
 NON_FUNCTIONAL = (
     "(lower(coalesce(f.operational_status, '')) ~ '(non|not)[ -_]?functional|closed|abandoned')"
@@ -83,21 +94,6 @@ def facility_datasets(session: Session, kind: str) -> list[Dataset]:
     return list(session.scalars(select(Dataset).where(Dataset.id.in_(ids))))
 
 
-def coverage_state_ids(session: Session, datasets: list[Dataset]) -> list[int]:
-    """States covered by every given dataset (intersection)."""
-    covered: set[int] | None = None
-    all_states = set(
-        session.execute(
-            text("SELECT id FROM admin_area WHERE level = 'state' AND active")
-        ).scalars()
-    )
-    for ds in datasets:
-        ids = (ds.extra or {}).get("coverage_state_ids")
-        states = set(ids) if ids else all_states
-        covered = states if covered is None else covered & states
-    return sorted(covered or [])
-
-
 def population_dataset(session: Session) -> Dataset | None:
     ds_id = session.scalar(
         text(
@@ -143,13 +139,15 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
     if d.kind in ("per_10k", "density") and pop_ds is None:
         result.skipped_reason = "no modelled population loaded"
         return result
+    fac_src: dict[int, Dataset] = {}
+    set_src: dict[int, Dataset] = {}
     if d.facility_kind:
         fds = facility_datasets(session, d.facility_kind)
         if not fds:
             result.skipped_reason = f"no {d.facility_kind} facilities loaded"
             return result
-        inputs += fds
-        states = coverage_state_ids(session, fds)
+        fac_src = sources_by_state(session, fds, "facility")
+        states = sorted(fac_src)
     if d.kind in ("per_10k", "density"):
         inputs.append(pop_ds)
     if d.kind == "settlements_beyond":
@@ -158,8 +156,13 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
             result.skipped_reason = "no settlements loaded"
             return result
         settlement_sets = list(session.scalars(select(Dataset).where(Dataset.id.in_(sds))))
-        inputs += settlement_sets
-        states = sorted(set(states) & set(coverage_state_ids(session, settlement_sets)))
+        set_src = sources_by_state(session, settlement_sets, "settlement")
+        states = sorted(set(states) & set(set_src))
+    used = {ds.id: ds for sid, ds in [*fac_src.items(), *set_src.items()] if sid in states}
+    inputs += list(used.values())
+    if (d.facility_kind or d.kind == "settlements_beyond") and not states:
+        result.skipped_reason = "no state is covered by every input this indicator needs"
+        return result
 
     out_ds = derived_dataset(
         session,
@@ -170,6 +173,27 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
         inputs=inputs,
     )
     session.execute(text("DELETE FROM observation WHERE dataset_id = :ds"), {"ds": out_ds.id})
+    if fac_src or set_src:
+        names = dict(
+            session.execute(
+                text("SELECT id, name FROM admin_area WHERE id = ANY(:i)"), {"i": states}
+            ).all()
+        )
+        out_ds.extra = {
+            **(out_ds.extra or {}),
+            "coverage_state_ids": states,
+            "sources_by_state": {
+                names[sid]: {
+                    k: v.key
+                    for k, v in (
+                        ("facilities", fac_src.get(sid)),
+                        ("settlements", set_src.get(sid)),
+                    )
+                    if v
+                }
+                for sid in states
+            },
+        }
 
     for level in d.levels:
         params = {"ind": ind, "ds": out_ds.id, "period": period, "level": level}
@@ -177,6 +201,10 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
         if d.facility_kind or d.kind == "settlements_beyond":
             state_filter = f"AND {_area_scope_sql(level)} = ANY(:states)"
             params["states"] = states
+        params["fsrc_states"] = [sid for sid in states if sid in fac_src]
+        params["fsrc_ds"] = [fac_src[sid].id for sid in params["fsrc_states"]]
+        params["ssrc_states"] = [sid for sid in states if sid in set_src]
+        params["ssrc_ds"] = [set_src[sid].id for sid in params["ssrc_states"]]
         if d.kind == "density":
             sql = f"""
                 INSERT INTO observation (indicator_id, geo_level, geo_id, period, value,
@@ -201,7 +229,7 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
                 FROM admin_area a
                 JOIN observation p ON p.geo_level = :level AND p.geo_id = a.id
                  AND p.indicator_id = (SELECT id FROM indicator WHERE code = '{POPULATION}')
-                LEFT JOIN facility f ON f.{col} = a.id AND f.kind = :kind
+                LEFT JOIN facility f ON f.{col} = a.id AND f.kind = :kind AND {FACILITY_SOURCE}
                  AND NOT {NON_FUNCTIONAL} {_subtype_filter(d)}
                 WHERE a.level = :level AND a.active AND p.value > 0 {state_filter}
                 GROUP BY a.id, p.value
@@ -218,7 +246,7 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
                     SELECT f.id, f.name,
                            ST_Distance(f.geom::geography, ST_PointOnSurface(a.geom)::geography) / 1000.0 AS km
                     FROM facility f
-                    WHERE f.kind = :kind AND NOT {NON_FUNCTIONAL} {_subtype_filter(d)}
+                    WHERE f.kind = :kind AND {FACILITY_SOURCE} AND NOT {NON_FUNCTIONAL} {_subtype_filter(d)}
                     ORDER BY f.geom <-> ST_PointOnSurface(a.geom)
                     LIMIT 1
                 ) n
@@ -234,11 +262,11 @@ def run_derivation(session: Session, d: Derivation, as_of: date | None = None) -
                        100.0 * count(*) FILTER (WHERE n.m > :m) / count(*), 'derived',
                        'unverified', :ds, count(*) || ' settlements'
                 FROM admin_area a
-                JOIN settlement s ON s.ward_id = a.id
+                JOIN settlement s ON s.ward_id = a.id AND {SETTLEMENT_SOURCE}
                 CROSS JOIN LATERAL (
                     SELECT ST_Distance(f.geom::geography, s.point::geography) AS m
                     FROM facility f
-                    WHERE f.kind = :kind AND NOT {NON_FUNCTIONAL} {_subtype_filter(d)}
+                    WHERE f.kind = :kind AND {FACILITY_SOURCE} AND NOT {NON_FUNCTIONAL} {_subtype_filter(d)}
                     ORDER BY f.geom <-> s.point LIMIT 1
                 ) n
                 WHERE a.level = :level AND a.active {state_filter}

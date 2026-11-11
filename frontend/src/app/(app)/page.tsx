@@ -5,7 +5,8 @@ import { Suspense } from "react";
 
 import { SectionLoader } from "@/components/brand";
 import { Badge, ErrorBox, PageHeader, Panel, Stat } from "@/components/ui";
-import { ApiError, type DataGap, formatNumber, type Sector, type Stats } from "@/lib/api";
+import CoverageTable from "@/components/CoverageTable";
+import { ApiError, type DataGap, formatNumber, type NationalCoverage, type Sector, type Stats } from "@/lib/api";
 import { serverApi } from "@/lib/server";
 
 export default function OverviewPage() {
@@ -31,57 +32,62 @@ const WORKFLOWS = [
 
 async function Overview() {
   await connection(); // always read fresh counts
-  let stats: Stats, sectors: Sector[], gaps: DataGap[];
+  let stats: Stats, sectors: Sector[], gaps: DataGap[], coverage: NationalCoverage;
   try {
-    [stats, sectors, gaps] = await Promise.all([
+    [stats, sectors, gaps, coverage] = await Promise.all([
       serverApi<Stats>("/api/v1/stats"),
       serverApi<Sector[]>("/api/v1/sectors"),
       serverApi<DataGap[]>("/api/v1/data-gaps?status=open"),
+      serverApi<NationalCoverage>("/api/v1/coverage"),
     ]);
   } catch (e) {
     unstable_rethrow(e); // let sign-in redirects through
     return <ErrorBox message={e instanceof ApiError ? e.message : "Could not load data."} />;
   }
   const a = stats.areas_by_level;
-  const f = stats.focus_state;
+  const total = coverage.states_total;
+  const nationwide = coverage.layers.filter((l) => l.states_covered === total).length;
   const bySector = stats.observations_by_sector ?? {};
   const maxValues = Math.max(1, ...sectors.map((s) => bySector[s.code] ?? 0));
 
   return (
     <div className="space-y-6">
-      {f && (
-        <section className="relative overflow-hidden rounded-xl bg-brand p-6 text-white">
-          <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full border-[22px] border-white/5" />
-          <div aria-hidden className="absolute -bottom-24 right-40 h-56 w-56 rounded-full border-[22px] border-gold/20" />
-          <div className="relative">
-            <div className="flex items-center gap-2 text-xs tracking-wide text-white/75">
-              <span className="h-px w-6 bg-gold" /> First implementation state
-            </div>
-            <h2 className="mt-2 text-2xl font-semibold">{f.name}</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                ["LGAs", formatNumber(f.lgas)],
-                ["Wards", formatNumber(f.wards)],
-                ["Population (modelled)", f.population ? formatNumber(f.population) : "—"],
-                ["Facilities", f.facilities ? formatNumber(f.facilities) : "not loaded"],
-                ["Settlements", f.settlements ? formatNumber(f.settlements) : "not loaded"],
-                ["Community claims", formatNumber(f.claims)],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-xs text-white/70">{k}</dt>
-                  <dd className="mt-0.5 text-xl font-semibold tabular-nums">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-5 flex flex-wrap gap-2 text-sm">
-              <Link href={`/explorer?area=${f.id}`} className="rounded-md bg-white px-3 py-1.5 font-medium text-brand hover:bg-gold-soft">Explore {f.name}</Link>
-              <Link href={`/areas/${f.id}`} className="rounded-md border border-white/40 px-3 py-1.5 hover:bg-white/10">State profile</Link>
-              <Link href={`/needs?level=lga&scope=${f.id}`} className="rounded-md border border-white/40 px-3 py-1.5 hover:bg-white/10">Compare LGAs</Link>
-            </div>
-            <p className="mt-3 text-xs text-white/70">Population is a model estimate (unverified). Facility and settlement files load from local downloads.</p>
+      <section className="relative overflow-hidden rounded-xl bg-brand p-6 text-white">
+        <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full border-[22px] border-white/5" />
+        <div aria-hidden className="absolute -bottom-24 right-40 h-56 w-56 rounded-full border-[22px] border-gold/20" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-xs tracking-wide text-white/75">
+            <span className="h-px w-6 bg-gold" /> National coverage
           </div>
-        </section>
-      )}
+          <h2 className="mt-2 text-2xl font-semibold">Nigeria: 36 states and the FCT</h2>
+          <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              ["States", formatNumber(a.state)],
+              ["LGAs", formatNumber(a.lga)],
+              ["Wards", formatNumber(a.ward)],
+              ["Evidence layers covering every state", `${nationwide} of ${coverage.layers.length}`],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-xs text-white/70">{k}</dt>
+                <dd className="mt-0.5 text-xl font-semibold tabular-nums">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <ul className="mt-4 flex flex-wrap gap-2 text-xs">
+            {coverage.layers.map((l) => (
+              <li key={l.code} className={`rounded-full border px-2.5 py-1 ${l.states_covered === total ? "border-white/40 bg-white/10" : "border-gold/50 text-white/85"}`}>
+                {l.label}: {l.states_covered}/{total} states
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 flex flex-wrap gap-2 text-sm">
+            <Link href="/explorer" className="rounded-md bg-white px-3 py-1.5 font-medium text-brand hover:bg-gold-soft">Explore Nigeria</Link>
+            <Link href="/needs?level=lga" className="rounded-md border border-white/40 px-3 py-1.5 hover:bg-white/10">Compare all 774 LGAs</Link>
+            <a href="#coverage" className="rounded-md border border-white/40 px-3 py-1.5 hover:bg-white/10">Coverage by state</a>
+          </div>
+          <p className="mt-3 text-xs text-white/70">Layers that do not yet cover every state are listed with the states they cover. Population is a model estimate (unverified).</p>
+        </div>
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {WORKFLOWS.map((w) => (
@@ -105,6 +111,12 @@ async function Overview() {
         <Stat label="Awaiting review" value={formatNumber(stats.solutions_awaiting_review ?? 0)} />
         <Stat label="Community claims" value={formatNumber(stats.claims ?? 0)} note={`${stats.claims_verified ?? 0} verified`} />
         <Stat label="Saved reports" value={formatNumber(stats.reports ?? 0)} />
+      </div>
+
+      <div id="coverage" className="scroll-mt-20">
+        <Panel title="Data coverage by state" aside={<Link href="/data" className="text-xs text-brand hover:underline">Datasets and how to load them</Link>}>
+          <CoverageTable coverage={coverage} />
+        </Panel>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">

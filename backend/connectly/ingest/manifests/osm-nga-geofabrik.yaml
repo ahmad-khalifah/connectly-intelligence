@@ -1,5 +1,7 @@
 key: osm-nga-geofabrik
 kind: osm_facilities
+# OpenStreetMap fills states that no preferred source covers; it is not counted where GRID3 or OpenCelliD covers the same kind.
+priority: 50
 source:
   key: openstreetmap
   name: OpenStreetMap contributors

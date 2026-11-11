@@ -48,9 +48,14 @@ test.describe("signed in", () => {
   });
 
   test("dashboard shows real counts @mobile", async ({ page }) => {
-    await expect(page.getByText("First implementation state")).toBeVisible();
-    await expect(page.getByText("774", { exact: true })).toBeVisible();
-    await expect(page.getByText("9,308", { exact: true })).toBeVisible();
+    await expect(page.getByText("Nigeria: 36 states and the FCT")).toBeVisible();
+    await expect(page.getByText("774", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("9,308", { exact: true }).first()).toBeVisible();
+    // Coverage by state lists all 37, and layers that are not loaded are shown as gaps.
+    const coverage = page.locator("#coverage table");
+    await expect(coverage.locator("tbody tr")).toHaveCount(37);
+    await expect(coverage.getByText("Ward boundaries")).toBeVisible();
+    await expect(coverage.locator("thead").getByText("37/37 states").first()).toBeVisible();
   });
 
   test("explorer colours Adamawa LGAs and opens a ward profile", async ({ page }) => {
@@ -120,6 +125,11 @@ test.describe("signed in", () => {
   test("needs, intelligence and market entry report gaps honestly", async ({ page }) => {
     await page.goto("/needs?sector=agriculture&level=lga");
     await expect(page.getByText(/No open indicator for agriculture/)).toBeVisible();
+    // LGAs are compared across Nigeria by default; wards ask for a state, none is assumed.
+    await page.goto("/needs?sector=health&level=lga");
+    await expect(page.getByText("local government areas in Nigeria", { exact: false }).first()).toBeVisible();
+    await page.goto("/needs?sector=health&level=ward");
+    await expect(page.getByText("Ward comparisons run within one state")).toBeVisible();
     await page.goto("/intelligence");
     // Earlier pages can stay mounted but hidden; scope to this page's form.
     await page.locator("form:has(#i-sector) select[data-level=state]").selectOption({ label: "Adamawa" });

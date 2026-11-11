@@ -34,7 +34,10 @@ download:
   instructions: >-
     Open the landing_url in a browser, choose Download, and save the GeoJSON, GeoPackage
     or zipped Shapefile. Then run:
-    connectly ingest load grid3-nga-wards-v4 --file <path> --within-state Adamawa
+    connectly ingest load grid3-nga-wards-v4 --file <path>
+    It loads without replacing the active wards. To switch, re-run with --activate yes:
+    the new wards replace the old ones only in the states the file covers, and every other
+    state keeps its current wards. Add --within-state NAME to switch one state first.
   file_name: null
 fields:
   # Candidate column names, tried in order. Confirm against the real file.

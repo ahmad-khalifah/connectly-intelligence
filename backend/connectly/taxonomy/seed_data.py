@@ -363,7 +363,7 @@ DATA_GAPS: list[dict] = [
         "description": "Settlement points and extents come from GRID3 (Settlement Names, "
         "Settlement Extents v4.1), which must be downloaded by hand. Until they are loaded, "
         "the ward is the smallest community unit.",
-        "scope": "Adamawa State",
+        "scope": "Nigeria (all 37 states)",
         "candidates": "GRID3 NGA Settlement Extents v4.1; GRID3 NGA Settlement Names",
         "field": False,
     },
@@ -464,7 +464,7 @@ DATA_GAPS: list[dict] = [
         "title": "Main economic activities per community",
         "description": "No open dataset lists economic activities per settlement. This "
         "field needs field verification or partner reports.",
-        "scope": "Adamawa State",
+        "scope": "Nigeria (all 37 states)",
         "candidates": "Field verification; partner organisations",
         "field": True,
     },

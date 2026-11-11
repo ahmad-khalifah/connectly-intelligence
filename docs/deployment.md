@@ -10,13 +10,15 @@ Follow "Quick start with Docker" in the README, then check:
 
 1. <http://localhost:3000> redirects to the sign-in page, which shows the Connectly logo.
 2. Sign in with the temporary password. You are asked to choose a new password.
-3. The overview shows 37 states, 774 LGAs and 9,308 wards, and the Adamawa panel shows 21
-   LGAs and 226 wards.
-4. In the explorer, Adamawa's LGAs are coloured by modelled density.
+3. The overview shows Nigeria with 37 states, 774 LGAs and 9,308 wards. Under "Data coverage
+   by state", ward boundaries and modelled population show 37/37 states, and every layer you
+   have not loaded yet shows dashes.
+4. In the explorer, click Adamawa (the validation state, or any other): its LGAs are coloured
+   by modelled density.
 5. The profile for Bille ward (Demsa) shows a population of 12,867 (95% interval
    8,342–19,288), labelled modelled and unverified.
-6. On the Needs page, *Healthcare / LGAs in Adamawa* says there is not enough data. That is
-   correct until facility data is loaded.
+6. On the Needs page, *Healthcare / LGAs / Nigeria (all states)* covers all 774 LGAs and says
+   there is not enough data. That is correct until facility data is loaded.
 7. Load one local dataset (see `docs/data-ingestion.md`), run `connectly derive`, and recheck
    the Needs page.
 

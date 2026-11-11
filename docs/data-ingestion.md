@@ -13,8 +13,11 @@ the evidence for it), limitations, download method and field mapping. Loaders co
   `licence_verified: false` and `commercial_use_allowed: null`. A manifest cannot allow
   commercial use on an unverified licence.
 - Values measured for a large area (a state survey) are never assigned to smaller areas.
-- Derived values are computed only inside the area a dataset covers. A health facility file
-  loaded for Adamawa alone never produces "0 clinics" for Kano.
+- Coverage is recorded state by state, and a national file is never assumed to cover all 37
+  states (see "Nationwide coverage" below). Derived values are computed only in covered
+  states: a file that covers one state never produces "0 clinics" for another.
+- Where several datasets of the same kind cover a state, derived values use exactly one of
+  them there, so the same clinic is never counted twice.
 - Reloading an identical file with an identical manifest is skipped. Changing the manifest
   forces a reload.
 
@@ -55,16 +58,17 @@ After loading, `bootstrap` also runs:
 ## 2. Download on your machine, then load
 
 The build environment could not reach these hosts, so each must be downloaded locally. Put
-manual downloads in `data/manual/` (git-ignored). `--within-state Adamawa` keeps only records
-inside Adamawa; omit it to load the whole country.
+manual downloads in `data/manual/` (git-ignored). **Load the national file.** Add
+`--within-state NAME` only to try a dataset on one state first; a later national load
+replaces that trial.
 
 ### Boundaries and settlements (GRID3)
 
 | Manifest key | File to download | Where | Command |
 | --- | --- | --- | --- |
 | `grid3-nga-wards-v4` | GRID3 NGA – Operational Wards v4.0 (GeoJSON or GeoPackage) | [data.grid3.org](https://data.grid3.org/datasets/GRID3::grid3-nga-operational-wards-v4-0/about) | `connectly ingest load grid3-nga-wards-v4 --file data/manual/<file> --activate yes` |
-| `grid3-nga-settlement-names` | GRID3 NGA – Settlement Names | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20settlement%20names) | `connectly ingest load grid3-nga-settlement-names --file data/manual/<file> --within-state Adamawa` |
-| `grid3-nga-settlement-extents` | GRID3 NGA – Settlement Extents v4.1 | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20settlement%20extents) | `connectly ingest load grid3-nga-settlement-extents --file data/manual/<file> --within-state Adamawa` |
+| `grid3-nga-settlement-names` | GRID3 NGA – Settlement Names | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20settlement%20names) | `connectly ingest load grid3-nga-settlement-names --file data/manual/<file>` |
+| `grid3-nga-settlement-extents` | GRID3 NGA – Settlement Extents v4.1 | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20settlement%20extents) | `connectly ingest load grid3-nga-settlement-extents --file data/manual/<file>` |
 
 GRID3 licences are listed on each dataset page. Read it, then set `licence`,
 `licence_verified: true`, `licence_evidence` and `commercial_use_allowed` in the manifest.
@@ -73,10 +77,11 @@ GRID3 licences are listed on each dataset page. Read it, then set `licence`,
 
 | Manifest key | File | Where | Licence | Command |
 | --- | --- | --- | --- | --- |
-| `grid3-nga-health-facilities` | GRID3 NGA – Health Facilities v3.0 (24 states) or v2.0 (all states) | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20health%20facilities) | Confirm on page | `connectly ingest load grid3-nga-health-facilities --file data/manual/<file> --within-state Adamawa` |
-| `grid3-nga-education-facilities` | GRID3 Nigeria Education Facilities (Dec 2020) | [HDX](https://data.humdata.org/dataset/nigeria-education-facilities) | CC BY (confirm) | `connectly ingest load grid3-nga-education-facilities --file data/manual/<file> --within-state Adamawa` |
-| `opencellid-nga` | `621.csv.gz` (Nigeria, MCC 621) | `https://opencellid.org/ocid/downloads?token=YOUR_TOKEN&type=mcc&file=621.csv.gz` (free registration for a token) | CC BY-SA 4.0 (verified) | `connectly ingest load opencellid-nga --file data/manual/621.csv.gz --within-state Adamawa` |
-| `osm-nga-geofabrik` | `nigeria-latest.osm.pbf` (~1 GB) | Direct: `connectly ingest fetch osm-nga-geofabrik` | ODbL 1.0 (verified) | `connectly ingest load osm-nga-geofabrik --within-state Adamawa` |
+| `grid3-nga-health-facilities-v3` | GRID3 NGA – Health Facilities v3.0 (August 2026; 24 states, declared in the manifest) | [data.grid3.org](https://data.grid3.org/search?q=Nigeria%20health%20facilities) | Confirm on page | `connectly ingest load grid3-nga-health-facilities-v3 --file data/manual/<file>` |
+| `grid3-nga-health-facilities-v2` | GRID3 NGA – Health Facilities v2.0 (November 2024; all states) | same | Confirm on page | `connectly ingest load grid3-nga-health-facilities-v2 --file data/manual/<file>` |
+| `grid3-nga-education-facilities` | GRID3 Nigeria Education Facilities (Dec 2020) | [HDX](https://data.humdata.org/dataset/nigeria-education-facilities) | CC BY (confirm) | `connectly ingest load grid3-nga-education-facilities --file data/manual/<file>` |
+| `opencellid-nga` | `621.csv.gz` (Nigeria, MCC 621) | `https://opencellid.org/ocid/downloads?token=YOUR_TOKEN&type=mcc&file=621.csv.gz` (free registration for a token) | CC BY-SA 4.0 (verified) | `connectly ingest load opencellid-nga --file data/manual/621.csv.gz` |
+| `osm-nga-geofabrik` | `nigeria-latest.osm.pbf` (~1 GB) | Direct: `connectly ingest fetch osm-nga-geofabrik` | ODbL 1.0 (verified) | `connectly ingest load osm-nga-geofabrik` |
 
 If a GRID3 file's column names differ from the manifest's candidates, the loader stops and
 prints the real column names. Add the right name to `fields:` in the manifest and run again.
@@ -103,11 +108,53 @@ connectly ingest list   # status of every dataset
 connectly ingest runs   # audit log of loads, with warnings and errors
 ```
 
+## Nationwide coverage
+
+Connectly covers all 36 states and the FCT. Each facility, settlement and boundary dataset
+records the states it covers (`coverage_state_ids` in the `dataset` table), and the dashboard's
+**Data coverage by state** table shows, for every state and every layer, whether data exists and
+which dataset supplies it. A dash there means the data is missing in that state, not zero.
+
+**How a load's coverage is decided**, in order:
+
+1. `--within-state NAME`: that state only.
+2. `coverage_states` in the manifest: the states the publisher says the file covers. For
+   example, GRID3 Health Facilities v3.0 lists 24 states. Records outside them are kept but
+   not used for derived values, and the load warns about them.
+3. Otherwise, the states where the file actually has at least one record. A national file
+   that happens to contain no records for a state does not cover it.
+
+Every load prints a coverage line, for example `coverage: 24 states (declared by the
+publisher)`, and lists any states not covered.
+
+**Several datasets of one kind.** In each state, derived values use the covering dataset with
+the lowest `priority` number, then the newest publication. Current priorities:
+
+| Kind | Preferred (priority) | Then |
+| --- | --- | --- |
+| Health facilities | GRID3 v3.0 (10) in its 24 states | GRID3 v2.0 (20) elsewhere, then OpenStreetMap (50) |
+| Schools | GRID3 education facilities (10) | OpenStreetMap (50) |
+| Mobile network sites | OpenCelliD (10) | none |
+| Financial access points, markets | OpenStreetMap (50) | none |
+| Settlements | GRID3 Settlement Extents v4.1 (10) | GRID3 Settlement Names, 2020 (20) |
+
+The source used in each state is stored with every derived dataset (`sources_by_state`) and
+shown in the coverage table.
+
+**Replacing boundaries for some states.** Loading a newer ward or LGA file and running it with
+`--activate yes` replaces the areas only in the states that file covers. Every other state
+keeps its current areas. Facilities and settlements are re-linked to the areas now active.
+
+**Expanding from Adamawa to all states** needs no code change. Load each national file
+without `--within-state`, run `connectly derive`, and read the coverage table.
+
 ## 3. Adding a new dataset
 
 1. Copy the closest manifest in `backend/connectly/ingest/manifests/` and change it.
 2. Record the licence only after reading it on the publisher's page, with the evidence.
-3. Load with `--within-state` first and read the notes it prints.
+3. Try it with `--within-state NAME` first and read the notes it prints, including the
+   coverage line. Then load the national file. If the publisher states which states the file
+   covers, list them in `coverage_states`.
 4. Add a test with a small synthetic file in `backend/tests/` if the manifest uses a new option.
 
 ## 4. Known data gaps

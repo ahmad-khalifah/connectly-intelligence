@@ -127,7 +127,6 @@ class Stats(BaseModel):
     solutions_awaiting_review: int = 0
     reports: int = 0
     observations_by_sector: dict[str, int] = {}
-    focus_state: dict | None = None
     generated_at: datetime
 
 

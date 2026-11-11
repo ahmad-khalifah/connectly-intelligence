@@ -54,6 +54,7 @@ from connectly.ingest.common import (
     to_float,
     upsert_dataset,
 )
+from connectly.ingest.coverage import CoverageError, compute_coverage
 from connectly.ingest.fetch import describe_local_file
 from connectly.ingest.manifest import Manifest
 from connectly.models import FACILITY_KINDS
@@ -287,6 +288,14 @@ def link_to_admin(session: Session, table: str, dataset_id: int | None = None) -
     geom = "geom" if table == "facility" else "point"
     scope = "AND t.dataset_id = :ds" if dataset_id is not None else ""
     params = {"ds": dataset_id}
+    # Start from scratch so no link to a since-replaced area survives.
+    session.execute(
+        text(
+            f"UPDATE {table} t SET ward_id = NULL, lga_id = NULL, state_id = NULL "
+            f"WHERE true {scope}"
+        ),
+        params,
+    )
     session.execute(
         text(
             f"""
@@ -393,21 +402,15 @@ def load_points(
         ).rowcount
         if removed:
             report.warnings.append(f"removed {removed} records no longer present in the file")
-    covered = (
-        session.execute(
-            text(
-                "SELECT id FROM admin_area WHERE level = 'state' AND active"
-                + (" AND id = :sid" if within_state else "")
-            ),
-            {"sid": within_sid} if within_state else {},
-        )
-        .scalars()
-        .all()
-    )
-    ds.extra = {**(ds.extra or {}), "coverage_state_ids": list(covered)}
     unlinked = link_to_admin(session, table, ds.id)
     if unlinked:
         report.warnings.append(f"{unlinked} records fall outside every loaded LGA")
+    try:
+        coverage = compute_coverage(session, manifest, ds, table, within_sid)
+    except CoverageError as e:
+        raise LoadError(str(e)) from e
+    report.warnings.append(f"coverage: {len(coverage.state_ids)} states ({coverage.method})")
+    report.warnings.extend(coverage.warnings)
     total = session.scalar(
         text(f"SELECT count(*) FROM {table} WHERE dataset_id = :ds"), {"ds": ds.id}
     )

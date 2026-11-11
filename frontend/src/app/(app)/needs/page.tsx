@@ -36,12 +36,19 @@ async function Needs({ searchParams }: { searchParams: PageProps<"/needs">["sear
     serverApi<AreaSummary[]>("/api/v1/areas?level=state"),
     serverApi<AreaSummary[]>("/api/v1/areas?level=country"),
   ]);
-  const adamawa = states.find((s) => s.name === "Adamawa");
   const sector = one(sp.sector) || "health";
   const level = (["state", "lga", "ward"].includes(one(sp.level)) ? one(sp.level) : "lga") as "state" | "lga" | "ward";
-  const scopeId = level === "state" ? countries[0]?.id : Number(one(sp.scope)) || adamawa?.id || states[0]?.id;
-  const r = await serverApi<NeedAssessment>(`/api/v1/needs/assessment?sector=${sector}&level=${level}&scope_id=${scopeId}`);
-  const scored = r.areas.filter((a) => a.score !== null);
+  const nigeria = countries[0]?.id;
+  const requested = Number(one(sp.scope)) || undefined;
+  // States are compared across Nigeria; LGAs across Nigeria unless a state is chosen.
+  // Ward comparisons (9,000+ areas nationally) need a state, which the user picks: no state
+  // is ever chosen for them.
+  const scopeId =
+    level === "state" ? nigeria : level === "lga" ? (requested ?? nigeria) : requested !== nigeria ? requested : undefined;
+  const r = scopeId
+    ? await serverApi<NeedAssessment>(`/api/v1/needs/assessment?sector=${sector}&level=${level}&scope_id=${scopeId}`)
+    : null;
+  const scored = r ? r.areas.filter((a) => a.score !== null) : [];
 
   return (
     <div className="space-y-6">
@@ -58,13 +65,14 @@ async function Needs({ searchParams }: { searchParams: PageProps<"/needs">["sear
           <label htmlFor="level" className="mb-1 block text-xs text-muted">Compare</label>
           <select id="level" name="level" defaultValue={level} className={inputClass}>
             <option value="state">States (across Nigeria)</option>
-            <option value="lga">LGAs within a state</option>
-            <option value="ward">Wards within a state</option>
+            <option value="lga">LGAs</option>
+            <option value="ward">Wards (within a state)</option>
           </select>
         </div>
         <div>
-          <label htmlFor="scope" className="mb-1 block text-xs text-muted">State (for LGAs and wards)</label>
-          <select id="scope" name="scope" defaultValue={String(scopeId)} className={inputClass}>
+          <label htmlFor="scope" className="mb-1 block text-xs text-muted">Within (for LGAs and wards)</label>
+          <select id="scope" name="scope" defaultValue={String(scopeId ?? "")} className={inputClass}>
+            <option value={String(nigeria ?? "")}>Nigeria (all states)</option>
             {states.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -72,6 +80,13 @@ async function Needs({ searchParams }: { searchParams: PageProps<"/needs">["sear
         </div>
         <button type="submit" className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong">Assess</button>
       </form>
+
+      {!r ? (
+        <p className="rounded-md border border-gold/40 bg-gold-soft px-3 py-2 text-sm text-gold-ink">
+          Ward comparisons run within one state. Choose a state under &ldquo;Within&rdquo; and select Assess.
+        </p>
+      ) : (
+        <>
 
       {scopeId && <SaveReport kind="needs" params={{ sector, level, scope_id: scopeId }} />}
 
@@ -162,6 +177,8 @@ async function Needs({ searchParams }: { searchParams: PageProps<"/needs">["sear
           </ol>
           <p className="mt-3 text-xs text-muted">Population is the modelled estimate (WorldPop/NPC-derived, unverified), shown to help weigh results, not used in the score.</p>
         </Panel>
+      )}
+        </>
       )}
     </div>
   );

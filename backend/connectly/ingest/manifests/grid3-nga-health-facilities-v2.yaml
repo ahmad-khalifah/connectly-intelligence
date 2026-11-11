@@ -1,0 +1,41 @@
+# GRID3 NGA Health Facilities v2.0 (November 2024). Download by hand from the GRID3 Data Hub.
+key: grid3-nga-health-facilities-v2
+kind: facilities
+# v2.0 covers all states; v3.0 (priority 10) is preferred wherever it covers a state.
+priority: 20
+
+source:
+  key: grid3
+  name: GRID3 (Geo-Referenced Infrastructure and Demographic Data for Development)
+  url: https://grid3.org/geospatial-data-nigeria
+title: "GRID3 NGA - Health Facilities v2.0"
+version: "v2.0 (November 2024)"
+geographic_coverage: Nigeria, all 36 states and the FCT
+method_summary: Geolocated health facilities compiled by GRID3 with federal and state partners.
+limitations: >-
+  Facility existence and type as published; functional status where given. Column names
+  must be confirmed against the downloaded file; the loader lists the real columns if
+  none of the candidates match.
+licence: "GRID3 open data licence — confirm on the dataset page"
+licence_verified: false
+commercial_use_allowed: null
+attribution: "Health facilities © GRID3."
+landing_url: https://data.grid3.org/search?q=Nigeria%20health%20facilities
+download:
+  mode: manual
+  instructions: >-
+    On data.grid3.org open "GRID3 NGA - Health Facilities v2.0", choose Download, save the
+    national GeoJSON or CSV under data/manual/, then run:
+    connectly ingest load grid3-nga-health-facilities-v2 --file data/manual/<file>
+    Load it alongside v3.0: derived values use v3.0 in its 24 states and v2.0 elsewhere.
+points:
+  target: facility
+  facility_kind: health
+  lon: [longitude, Longitude, LONGITUDE, x, X, lon]
+  lat: [latitude, Latitude, LATITUDE, y, Y, lat]
+fields:
+  name: [facility_name, primary_name, name, Name, facility_n]
+  code: [globalid, GlobalID, global_id, facility_id, uniq_id, OBJECTID, objectid, FID]
+  subtype: [type, facility_type, category, facility_level, ftype]
+  status: [functional_status, functional, status, operational_status]
+  ownership: [ownership, ownership_type, owner]
