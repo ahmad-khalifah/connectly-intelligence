@@ -6,6 +6,7 @@ Only areas from the active dataset for each level are served.
 import json
 from typing import Literal
 
+import shapely
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -210,26 +211,42 @@ DESCENDANTS_SQL = (
 )
 
 
+# Simplifying each area on its own moves a shared border differently on each side, which
+# draws neighbours overlapping (and leaves gaps) on the map. All returned areas are
+# simplified together as one coverage instead, so each shared border stays identical.
+# Done with Shapely (bundled GEOS >= 3.12) so it works on any PostGIS version.
+COORD_PRECISION = 1e-5  # ~1 m; applied to every vertex identically
+
+
+def simplify_coverage(geoms: list, tolerance: float) -> list:
+    if tolerance > 0 and geoms:
+        geoms = list(shapely.coverage_simplify(geoms, tolerance))
+    return [shapely.set_precision(g, COORD_PRECISION) for g in geoms]
+
+
 def _features(session: Session, where: str, params: dict, tolerance: float) -> list[dict]:
-    rows = session.execute(
-        text(
-            f"""
+    rows = (
+        session.execute(
+            text(
+                f"""
             SELECT a.id, a.level, a.name, a.parent_id, a.area_km2,
-                   ST_AsGeoJSON(
-                     CASE WHEN :tol > 0 THEN ST_SimplifyPreserveTopology(a.geom, :tol)
-                          ELSE a.geom END, 5) AS geometry
+                   ST_AsBinary(a.geom) AS wkb
             FROM admin_area a
             WHERE a.active AND {where}
             ORDER BY a.name
             """
-        ),
-        params | {"tol": tolerance},
-    ).mappings()
+            ),
+            params,
+        )
+        .mappings()
+        .all()
+    )
+    shapes = simplify_coverage([shapely.from_wkb(bytes(r["wkb"])) for r in rows], tolerance)
     return [
         {
             "type": "Feature",
             "id": r["id"],
-            "geometry": json.loads(r["geometry"]),
+            "geometry": None if g.is_empty else json.loads(shapely.to_geojson(g)),
             "properties": {
                 "id": r["id"],
                 "level": r["level"],
@@ -238,7 +255,7 @@ def _features(session: Session, where: str, params: dict, tolerance: float) -> l
                 "area_km2": round(r["area_km2"], 1) if r["area_km2"] is not None else None,
             },
         }
-        for r in rows
+        for r, g in zip(rows, shapes, strict=True)
     ]
 
 

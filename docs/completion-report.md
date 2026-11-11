@@ -1,6 +1,9 @@
 # Connectly Intelligence: completion report
 
-10 November 2026 · repository `ahmad-khalifah/connectly-intelligence`, branch `main`
+10 November 2026, re-verified 11 November 2026 · repository `ahmad-khalifah/connectly-intelligence`, branch `main`
+
+The 11 November clean-machine re-verification and the two map fixes it led to are recorded in
+[milestones/verification-2026-11-11.md](milestones/verification-2026-11-11.md).
 
 ## 1. Summary
 
@@ -46,7 +49,7 @@ Migrations: `0001` to `0005`, applied and checked for drift. Milestone reports:
 
 | Check | Result |
 | --- | --- |
-| Backend tests (`pytest`), including six checks against the real loaded data | 152 passed |
+| Backend tests (`pytest`), including six checks against the real loaded data | 155 passed (152 at first delivery; 3 map tests added on 11 November) |
 | Frontend unit tests | 3 passed |
 | Browser tests (Playwright): sign-in and forced password change, dashboard, explorer, profile, directory to matching to PDF, needs, intelligence, market entry, admin, sign-out, mobile | 8 passed locally and 8 passed in CI against Docker |
 | Lint and format (ruff, ESLint), type check, production build | Pass |

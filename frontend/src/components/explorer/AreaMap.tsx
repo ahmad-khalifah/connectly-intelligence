@@ -21,6 +21,13 @@ import { NO_DATA } from "@/lib/sectors";
 
 const BASEMAP_URL = process.env.NEXT_PUBLIC_BASEMAP_STYLE_URL;
 
+// Fills are opaque on the plain background. MapLibre's polygon triangulation occasionally
+// draws a sliver of a complex but valid area twice (seen on Mubi North at state zoom); with
+// a translucent fill that shows as a dark wedge, with an opaque fill it is invisible. Over a
+// basemap the fill must stay translucent so the basemap shows through.
+const FILL_OPACITY_CHOROPLETH = BASEMAP_URL ? 0.8 : 1;
+const PLAIN_FILL = "#f6eeee";
+
 const PLAIN_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
@@ -90,20 +97,15 @@ export default function AreaMap(props: Props) {
         appliedIds.current.push(id);
       }
       m.setPaintProperty("children-fill", "fill-color", fillExpression(choropleth.stops, choropleth.colors));
-      m.setPaintProperty("children-fill", "fill-opacity", [
-        "case",
-        ["boolean", ["feature-state", "hover"], false],
-        0.95,
-        0.8,
-      ]);
+      m.setPaintProperty("children-fill", "fill-opacity", FILL_OPACITY_CHOROPLETH);
+      // White borders keep neighbours in the same colour class apart.
+      m.setPaintProperty("children-line", "line-color", "#ffffff");
+      m.setPaintProperty("children-line", "line-opacity", 0.9);
     } else {
-      m.setPaintProperty("children-fill", "fill-color", "#6b1420");
-      m.setPaintProperty("children-fill", "fill-opacity", [
-        "case",
-        ["boolean", ["feature-state", "hover"], false],
-        0.25,
-        0.06,
-      ]);
+      m.setPaintProperty("children-fill", "fill-color", BASEMAP_URL ? "#6b1420" : PLAIN_FILL);
+      m.setPaintProperty("children-fill", "fill-opacity", BASEMAP_URL ? 0.06 : 1);
+      m.setPaintProperty("children-line", "line-color", "#6b1420");
+      m.setPaintProperty("children-line", "line-opacity", 0.55);
     }
     const key = bbox?.join(",") ?? null;
     if (bbox && key !== lastBbox.current) {
@@ -149,9 +151,24 @@ export default function AreaMap(props: Props) {
         });
         m.addSource("facilities", { type: "geojson", data: EMPTY });
         m.addSource("settlements", { type: "geojson", data: EMPTY });
-        m.addLayer({ id: "children-fill", type: "fill", source: "children", paint: { "fill-color": "#6b1420", "fill-opacity": 0.06 } });
+        m.addLayer({
+          id: "children-fill",
+          type: "fill",
+          source: "children",
+          paint: { "fill-color": BASEMAP_URL ? "#6b1420" : PLAIN_FILL, "fill-opacity": BASEMAP_URL ? 0.06 : 1 },
+        });
         m.addLayer({ id: "children-line", type: "line", source: "children", paint: { "line-color": "#6b1420", "line-width": 0.8, "line-opacity": 0.55 } });
         m.addLayer({ id: "context-line", type: "line", source: "context", paint: { "line-color": "#1f1517", "line-width": 2 } });
+        // Hover is shown as an outline, so it works with opaque fills.
+        m.addLayer({
+          id: "children-hover",
+          type: "line",
+          source: "children",
+          paint: {
+            "line-color": "#1f1517",
+            "line-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.5, 0],
+          },
+        });
         m.addLayer({
           id: "settlements-circle",
           type: "circle",

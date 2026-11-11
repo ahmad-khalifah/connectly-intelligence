@@ -191,7 +191,7 @@ The variables are `CONNECTLY_SECRET_KEY`, `POSTGRES_PASSWORD`, `COOKIE_SECURE`,
 ## Tests
 
 ```bash
-cd backend && pytest -q && ruff check .        # 152 tests, against connectly_test
+cd backend && pytest -q && ruff check .        # 155 tests, against connectly_test
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 

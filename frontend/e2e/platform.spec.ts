@@ -78,6 +78,7 @@ test.describe("signed in", () => {
     await page.fill("#org-source_description", "Automated end-to-end test record");
     await page.click("button[type=submit]");
     await expect(page).toHaveURL(/organisations\/\d+$/);
+    const organisationUrl = page.url();
     await page.getByRole("link", { name: "Add solution" }).click();
     await expect(page).toHaveURL(/solutions\/new$/);
     // Earlier pages can stay mounted but hidden, so scope to the visible solution form.
@@ -107,6 +108,13 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: "Retire" }).click();
     await page.getByRole("button", { name: "Retire" }).last().click();
     await expect(page.getByText("Retired", { exact: true })).toBeVisible();
+
+    // Retire the test organisation too, so no test record stays active.
+    await page.goto(organisationUrl);
+    await page.getByRole("button", { name: "Retire" }).click();
+    await page.fill("#action-note", "End-to-end test record");
+    await page.getByRole("button", { name: "Retire" }).last().click();
+    await expect(page.getByText("Retired", { exact: true }).first()).toBeVisible();
   });
 
   test("needs, intelligence and market entry report gaps honestly", async ({ page }) => {
